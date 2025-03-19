@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, Image, TouchableOpacity, StyleSheet, Dimensions, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, Image, TouchableOpacity, StyleSheet, Dimensions, ScrollView, KeyboardAvoidingView, Platform, Modal } from 'react-native';
 import { router } from 'expo-router';
 import Checkbox from 'expo-checkbox';
 
@@ -13,6 +13,10 @@ const CREATE_ACCOUNT_TITLE = require('../assets/images/createAccount.png');
 const OPEN_EYE = require('../assets/images/openEyes.png');  
 const CLOSE_EYE = require('../assets/images/eyeOff.png');  
 const BACK_ICON = require('../assets/images/leftBack.png'); // Add a back arrow icon
+const EMAIL_ICON = require('../assets/images/email.png');  
+const EMAIL_TEXT = require('../assets/images/emailText.png');
+const CHECK_ICON = require('../assets/images/check.png');  
+const CREATED_ACCOUNT_TEXT = require('../assets/images/createdAccountText.png'); 
 
 const { width, height } = Dimensions.get('window');
 
@@ -27,6 +31,8 @@ export default function SignIn() {
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isVerificationVisible, setVerificationVisible] = useState(false);
+  const [isAccountCreatedVisible, setAccountCreatedVisible] = useState(false);
 
   const handleInputChange = (name: string, value: string) => {
     setForm({ ...form, [name]: value });
@@ -38,7 +44,23 @@ export default function SignIn() {
       return;
     }
     console.log("Sign-In Data:", form);
-    router.push('/onboarding/OnboardingScreen'); // ✅ Redirect after Sign-In
+    setVerificationVisible(true);
+  };
+
+  const handleVerify = (code: string) => {
+    if (code.length === 6) {
+      setVerificationVisible(false);
+      setTimeout(() => {
+        setAccountCreatedVisible(true); // ✅ This ensures modal opens
+      }, 500); // Add slight delay to ensure state updates correctly
+    } else {
+      alert("Please enter a valid 6-digit code.");
+    }
+  };
+
+  const handleContinue = () => {
+    setAccountCreatedVisible(false);
+    router.push('/onboarding/OnboardingScreen');
   };
 
   const handleBackPress = () => {
@@ -146,7 +168,7 @@ export default function SignIn() {
 
           {/* Sign-In Button (Outside the Card) */}
           <TouchableOpacity style={styles.signInButton} onPress={handleSignIn}>
-            <Text style={styles.signInButtonText}>Sign In</Text>
+            <Text style={styles.signInButtonText}>Sign Up</Text>
           </TouchableOpacity>
 
           {/* Sign-Up Link */}
@@ -154,12 +176,124 @@ export default function SignIn() {
             <Text style={styles.signUpText}>Already have an account?</Text>
             <Text style={styles.link} onPress={() => router.push('/loginpage/login')}>Login from here</Text>
           </View>
+          {/* Email Verification Modal */}
+            <EmailVerificationModal
+            isVisible={isVerificationVisible}
+            onClose={() => setVerificationVisible(false)}
+            onVerify={handleVerify} // ✅ Ensure this is passed correctly
+          />
+
+          {/* Successfully Created Account Modal */}
+          <AccountCreatedModal 
+              isVisible={isAccountCreatedVisible} 
+              onContinue={handleContinue} 
+            />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
+const EmailVerificationModal = ({ isVisible, onClose, onVerify }: { isVisible: boolean; onClose: () => void; onVerify: (code: string) => void }) => {
+  const [verificationCode, setVerificationCode] = useState('');
+  const [timer, setTimer] = useState(60);
+  const [isResendVisible, setResendVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState(''); // ✅ Store error message
+
+  useEffect(() => {
+    if (timer > 0) {
+      const interval = setInterval(() => {
+        setTimer((prev) => prev - 1);
+      }, 1000);
+      return () => clearInterval(interval);
+    } else {
+      setResendVisible(true);
+    }
+  }, [timer]);
+
+  const handleResendCode = () => {
+    setTimer(60);
+    setResendVisible(false);
+    console.log("New verification code sent!");
+    setErrorMessage(''); // ✅ Clear error message when resending
+    setVerificationCode(''); // ✅ Clear input field
+  };
+
+  const handleVerify = () => {
+    if (verificationCode.length === 6) {
+      setErrorMessage(''); // ✅ Clear error when correct
+      onVerify(verificationCode);
+    } else {
+      setErrorMessage('Please enter a valid 6-digit code'); // ✅ Show error if invalid
+    }
+  };
+
+  const handleTextChange = (text: string) => {
+    setVerificationCode(text.replace(/[^0-9]/g, '')); // ✅ Only allow numbers
+    if (errorMessage) {
+      setErrorMessage(''); // ✅ Remove error message when user starts typing
+    }
+  };
+
+  return (
+    <Modal visible={isVisible} transparent animationType="fade">
+      <View style={styles.modalContainer}>
+        <View style={styles.modalContent}>
+          <Image source={EMAIL_ICON} style={styles.emailIcon} resizeMode="contain" />
+          <Image source={EMAIL_TEXT} style={styles.emailText} resizeMode="contain" />
+
+          {/* Input Field with Error Handling */}
+          <View style={[styles.inputContainer, errorMessage ? styles.inputError : null]}>
+            <Image source={MAIL_ICON} style={styles.icon} />
+            <TextInput 
+              style={styles.input}
+              placeholder="Verification Code"
+              keyboardType="numeric"
+              maxLength={6}
+              value={verificationCode}
+              onChangeText={handleTextChange} // ✅ Automatically clears error when typing
+            />
+          </View>
+
+          {/* Show Error Message Below Input Field */}
+          {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+
+          {/* Verify Button */}
+          <TouchableOpacity style={styles.verifyButton} onPress={handleVerify}>
+            <Text style={styles.verifyButtonText}>Verify</Text>
+          </TouchableOpacity>
+
+          {/* Resend Code Button */}
+          {!isResendVisible ? (
+            <Text style={styles.timerText}>Resend Code in {timer}s</Text>
+          ) : (
+            <TouchableOpacity onPress={handleResendCode}>
+              <Text style={styles.resendText}>Resend Verification Code</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+};  
+
+// ✅ Successfully Created Account Modal
+const AccountCreatedModal = ({ isVisible, onContinue }: { isVisible: boolean; onContinue: () => void }) => {
+  return (
+    <Modal visible={isVisible} transparent animationType="fade">
+      <View style={styles.modalContainer}>
+        <View style={styles.modalContent}>
+          <Image source={CHECK_ICON} style={styles.checkIcon} resizeMode="contain" />
+          <Image source={CREATED_ACCOUNT_TEXT} style={styles.accountText} resizeMode="contain" />
+          <Text style={styles.successMessage}>Welcome to NeoMe! Where your well-being comes to life.</Text>
+          <TouchableOpacity style={styles.continueButton} onPress={onContinue}>
+            <Text style={styles.continueButtonText}>Continue</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+};
 
 const styles = StyleSheet.create({
   scrollContainer: {
@@ -296,4 +430,95 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
   },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContent: {
+    width: '85%',
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 20,
+    alignItems: 'center',
+  },
+  emailIcon: {
+    width: 70,
+    height: 70,
+    marginBottom: 10,
+  },
+  emailText: {
+    width: 220,
+    height: 45,
+    marginBottom: 10,
+  },
+  inputError: {
+    borderColor: 'red', // ✅ Turns red when invalid
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 14,
+    marginTop: 5,
+    textAlign: 'center',
+  },
+  verifyButton: {
+    width: '100%',
+    backgroundColor: '#6549FE',
+    paddingVertical: 12,
+    borderRadius: 25,
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  verifyButtonText: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  timerText: {
+    fontSize: 14,
+    color: '#888',
+    fontWeight: 'bold',
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  resendText: {
+    fontSize: 14,
+    color: '#6549FE',
+    fontWeight: 'bold',
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  checkIcon: {
+    width: 70,
+    height: 70,
+    marginBottom: 10,
+  },
+  accountText: {
+    width: 250,
+    height: 45,
+    marginBottom: 10,
+  },
+  successMessage: {
+    fontSize: 15,
+    color: '#888',
+    textAlign: 'center',
+    marginBottom: 25,
+    marginTop: 20,
+  },
+  continueButton: {
+    width: '100%',
+    backgroundColor: '#6549FE',
+    paddingVertical: 12,
+    borderRadius: 25,
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  continueButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },  
 });
