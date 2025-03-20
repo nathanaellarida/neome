@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { 
   ScrollView, StyleSheet, View, Text, TouchableOpacity, Dimensions, Image 
 } from 'react-native';
@@ -16,8 +16,11 @@ export default function WorkoutPlans() {
   const intermediateRef = useRef<View>(null);
   const advancedRef = useRef<View>(null);
 
+  const [activeTab, setActiveTab] = useState('Beginner');
+
   // Function to scroll to sections
-  const scrollToSection = (ref: React.RefObject<View>) => {
+  const scrollToSection = (ref: React.RefObject<View>, tabName: string) => {
+    setActiveTab(tabName);
     ref.current?.measure((x, y, width, height, pageX, pageY) => {
       scrollViewRef.current?.scrollTo({ y: pageY - 100, animated: true });
     });
@@ -48,7 +51,7 @@ export default function WorkoutPlans() {
             <Text style={styles.challengeText}>7x4 Challenge</Text>
             <Text style={styles.challengeTitle}>Full Body</Text>
             <Text style={styles.challengeTitle}>Workout</Text>
-            <TouchableOpacity style={styles.startButton}>
+            <TouchableOpacity style={styles.startButton} onPress={() => router.push('/physical_activities/fullBodyWorkout')}>
             <Text style={styles.startButtonText}>Start</Text>
             </TouchableOpacity>
         </View>
@@ -62,15 +65,24 @@ export default function WorkoutPlans() {
 
         {/* Category Tabs */}
         <View style={styles.tabsContainer}>
-          <TouchableOpacity onPress={() => scrollToSection(beginnerRef)} style={styles.tabButton}>
-            <Text style={styles.tabText}>Beginner</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => scrollToSection(intermediateRef)} style={styles.tabButton}>
-            <Text style={styles.tabText}>Intermediate</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => scrollToSection(advancedRef)} style={styles.tabButton}>
-            <Text style={styles.tabText}>Advanced</Text>
-          </TouchableOpacity>
+          {[
+            { label: 'Beginner', ref: beginnerRef },
+            { label: 'Intermediate', ref: intermediateRef },
+            { label: 'Advanced', ref: advancedRef },
+          ].map((tab, index) => (
+            <TouchableOpacity
+              key={index}
+              onPress={() => scrollToSection(tab.ref, tab.label)}
+              style={[
+                styles.tabButton,
+                activeTab === tab.label && styles.activeTab, // Apply active styles
+              ]}
+            >
+              <Text style={[styles.tabText, activeTab === tab.label && styles.activeTabText]}>
+                {tab.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
         {/* Beginner Section */}
@@ -78,25 +90,24 @@ export default function WorkoutPlans() {
           <Text style={styles.sectionTitle}>Beginner</Text>
           <View style={styles.workoutList}>
             {[
-              { title: 'Abs Beginner', image: require('../assets/images/absBeginner.png') },
-              { title: 'Chest Beginner', image: require('../assets/images/chestBeginner.png') },
-              { title: 'Arm Beginner', image: require('../assets/images/armBeginner.png') },
-              { title: 'Leg Beginner', image: require('../assets/images/legBeginner.png') },
+              { title: 'Abs Beginner', image: require('../assets/images/absBeginner.png'), route: '/beginner/AbsBeginner' },
+              { title: 'Chest Beginner', image: require('../assets/images/chestBeginner.png'), route: '/beginner/ChestBeginner' },
+              { title: 'Arm Beginner', image: require('../assets/images/armBeginner.png'), route: '/beginner/ArmBeginner' },
+              { title: 'Leg Beginner', image: require('../assets/images/legBeginner.png'), route: '/beginner/LegBeginner' },
               { title: 'Shoulder & Back\nBeginner', image: require('../assets/images/sNbBeginner.png') },
             ].map((workout, index) => (
-              <View key={index} style={styles.workoutCard}>
+              <TouchableOpacity key={index} style={styles.workoutCard} onPress={() => router.push(workout.route)}>
                 <Image source={workout.image} style={styles.workoutImage} />
                 <View style={styles.workoutContent}>
                   <Text style={styles.workoutTitle}>{workout.title}</Text>
                   <Text style={styles.workoutSubText}>20 minutes - 25 Workouts</Text>
                 </View>
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
         </View>
 
-
-       {/* Intermediate Section */}
+        {/* Intermediate Section */}
         <View ref={intermediateRef}>
           <Text style={styles.sectionTitle}>Intermediate</Text>
           <View style={styles.workoutList}>
@@ -107,13 +118,13 @@ export default function WorkoutPlans() {
               { title: 'Leg Intermediate', image: require('../assets/images/legIntermediate.png') },
               { title: 'Shoulder & Back\nIntermediate', image: require('../assets/images/sNbIntermediate.png') },
             ].map((workout, index) => (
-              <View key={index} style={styles.workoutCard}>
+              <TouchableOpacity key={index} style={styles.workoutCard}>
                 <Image source={workout.image} style={styles.workoutImage} />
                 <View style={styles.workoutContent}>
                   <Text style={styles.workoutTitle}>{workout.title}</Text>
                   <Text style={styles.workoutSubText}>20 minutes - 25 Workouts</Text>
                 </View>
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
         </View>
@@ -129,13 +140,13 @@ export default function WorkoutPlans() {
               { title: 'Leg Advanced', image: require('../assets/images/legAdvanced.png') },
               { title: 'Shoulder & Back\nAdvanced', image: require('../assets/images/sNbAdvanced.png') },
             ].map((workout, index) => (
-              <View key={index} style={styles.workoutCard}>
+              <TouchableOpacity key={index} style={styles.workoutCard}>
                 <Image source={workout.image} style={styles.workoutImage} />
                 <View style={styles.workoutContent}>
                   <Text style={styles.workoutTitle}>{workout.title}</Text>
                   <Text style={styles.workoutSubText}>20 minutes - 25 Workouts</Text>
                 </View>
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
         </View>
@@ -281,18 +292,29 @@ const styles = StyleSheet.create({
   tabsContainer: { 
     flexDirection: 'row', 
     justifyContent: 'center', 
-    marginTop: 15,
- },
+    backgroundColor: '#fff', 
+    borderRadius: 30, 
+    marginTop: 20,
+    marginHorizontal: 20,
+    height: 45,
+  },
   tabButton: { 
-    padding: 10, 
-    marginHorizontal: 10, 
-    backgroundColor: '#6549FE', 
-    borderRadius: 20
-},
-tabText: { 
-    color: '#fff', 
-    fontWeight: 'bold' 
-}, 
+    paddingVertical: 10, 
+    paddingHorizontal: 20, 
+    borderRadius: 30,
+  },
+  tabText: { 
+    color: '#6549FE', 
+    fontWeight: 'bold',
+    fontSize: 15,
+    alignContent: 'center',
+  },
+  activeTab: {
+    backgroundColor: '#6549FE',
+  },
+  activeTabText: {
+    color: '#fff',
+  },
   workoutList: { 
     marginHorizontal: 15 
   },
