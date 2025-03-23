@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 
 const { width } = Dimensions.get('window');
 
-export default function LegBeginner() {
+export default function LegAdvanced() {
   const router = useRouter();
 
   // Workout Data with GIFs
@@ -33,7 +33,7 @@ export default function LegBeginner() {
       {/* HEADER */}
       <View style={styles.headerContainer}>
         <Image 
-          source={require('../assets/images/legBeginnerWorkout.png')} 
+          source={require('../assets/images/legAdvancedWorkout.png')} 
           style={styles.headerBackground} 
           contentFit="cover" // ✅ Similar to resizeMode
         />
@@ -45,7 +45,7 @@ export default function LegBeginner() {
 
         {/* Text & Start Button */}
         <View style={styles.headerContent}>
-          <Text style={styles.workoutTitle}>Leg Beginner</Text>
+          <Text style={styles.workoutTitle}>Leg Advanced</Text>
           <Text style={styles.workoutSubText}>20 minutes - 16 Workouts</Text>
           <TouchableOpacity style={styles.startButton}>
             <Text style={styles.startButtonText}>Start</Text>

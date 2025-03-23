@@ -94,9 +94,9 @@ export default function WorkoutPlans() {
               { title: 'Chest Beginner', image: require('../assets/images/chestBeginner.png'), route: '/beginner/ChestBeginner' },
               { title: 'Arm Beginner', image: require('../assets/images/armBeginner.png'), route: '/beginner/ArmBeginner' },
               { title: 'Leg Beginner', image: require('../assets/images/legBeginner.png'), route: '/beginner/LegBeginner' },
-              { title: 'Shoulder & Back\nBeginner', image: require('../assets/images/sNbBeginner.png') },
+              { title: 'Shoulder & Back\nBeginner', image: require('../assets/images/sNbBeginner.png'), route: '/beginner/SnbBeginner' },
             ].map((workout, index) => (
-              <TouchableOpacity key={index} style={styles.workoutCard} onPress={() => router.push(workout.route)}>
+              <TouchableOpacity key={index} style={styles.workoutCard} onPress={() => router.push(workout.route as any)}>
                 <Image source={workout.image} style={styles.workoutImage} />
                 <View style={styles.workoutContent}>
                   <Text style={styles.workoutTitle}>{workout.title}</Text>
@@ -112,13 +112,13 @@ export default function WorkoutPlans() {
           <Text style={styles.sectionTitle}>Intermediate</Text>
           <View style={styles.workoutList}>
             {[
-              { title: 'Abs Intermediate', image: require('../assets/images/absIntermediate.png') },
-              { title: 'Chest Intermediate', image: require('../assets/images/chestIntermediate.png') },
-              { title: 'Arm Intermediate', image: require('../assets/images/armIntermediate.png') },
-              { title: 'Leg Intermediate', image: require('../assets/images/legIntermediate.png') },
-              { title: 'Shoulder & Back\nIntermediate', image: require('../assets/images/sNbIntermediate.png') },
+              { title: 'Abs Intermediate', image: require('../assets/images/absIntermediate.png'), route: '/intermediate/AbsIntermediate' },
+              { title: 'Chest Intermediate', image: require('../assets/images/chestIntermediate.png'), route: '/intermediate/ChestIntermediate' },
+              { title: 'Arm Intermediate', image: require('../assets/images/armIntermediate.png'), route: '/intermediate/ArmIntermediate' },
+              { title: 'Leg Intermediate', image: require('../assets/images/legIntermediate.png'), route: '/intermediate/LegIntermediate' },
+              { title: 'Shoulder & Back\nIntermediate', image: require('../assets/images/sNbIntermediate.png'), route: '/intermediate/SnbIntermediate' },
             ].map((workout, index) => (
-              <TouchableOpacity key={index} style={styles.workoutCard}>
+              <TouchableOpacity key={index} style={styles.workoutCard} onPress={() => router.push(workout.route as any)}>
                 <Image source={workout.image} style={styles.workoutImage} />
                 <View style={styles.workoutContent}>
                   <Text style={styles.workoutTitle}>{workout.title}</Text>
@@ -134,13 +134,13 @@ export default function WorkoutPlans() {
           <Text style={styles.sectionTitle}>Advanced</Text>
           <View style={styles.workoutList}>
             {[
-              { title: 'Abs Advanced', image: require('../assets/images/absAdvanced.png') },
-              { title: 'Chest Advanced', image: require('../assets/images/chestAdvanced.png') },
-              { title: 'Arm Advanced', image: require('../assets/images/armAdvanced.png') },
-              { title: 'Leg Advanced', image: require('../assets/images/legAdvanced.png') },
-              { title: 'Shoulder & Back\nAdvanced', image: require('../assets/images/sNbAdvanced.png') },
+              { title: 'Abs Advanced', image: require('../assets/images/absAdvanced.png'), route: '/advanced/AbsAdvanced' },
+              { title: 'Chest Advanced', image: require('../assets/images/chestAdvanced.png'), route: '/advanced/ChestAdvanced' },
+              { title: 'Arm Advanced', image: require('../assets/images/armAdvanced.png'), route: '/advanced/ArmAdvanced' },
+              { title: 'Leg Advanced', image: require('../assets/images/legAdvanced.png'), route: '/advanced/LegAdvanced' },
+              { title: 'Shoulder & Back\nAdvanced', image: require('../assets/images/sNbAdvanced.png'), route: '/advanced/SnbAdvanced' },
             ].map((workout, index) => (
-              <TouchableOpacity key={index} style={styles.workoutCard}>
+              <TouchableOpacity key={index} style={styles.workoutCard}onPress={() => router.push(workout.route as any)}>
                 <Image source={workout.image} style={styles.workoutImage} />
                 <View style={styles.workoutContent}>
                   <Text style={styles.workoutTitle}>{workout.title}</Text>

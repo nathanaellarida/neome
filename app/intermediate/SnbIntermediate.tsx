@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 
 const { width } = Dimensions.get('window');
 
-export default function LegBeginner() {
+export default function SnbIntermediate() {
   const router = useRouter();
 
   // Workout Data with GIFs
@@ -33,7 +33,7 @@ export default function LegBeginner() {
       {/* HEADER */}
       <View style={styles.headerContainer}>
         <Image 
-          source={require('../assets/images/legBeginnerWorkout.png')} 
+          source={require('../assets/images/snbIntermediateWorkout.png')} 
           style={styles.headerBackground} 
           contentFit="cover" // ✅ Similar to resizeMode
         />
@@ -45,7 +45,8 @@ export default function LegBeginner() {
 
         {/* Text & Start Button */}
         <View style={styles.headerContent}>
-          <Text style={styles.workoutTitle}>Leg Beginner</Text>
+          <Text style={styles.workoutTitle}>Shoulder & Back</Text>
+          <Text style={styles.workoutTitleSNB}>Intermediate</Text>
           <Text style={styles.workoutSubText}>20 minutes - 16 Workouts</Text>
           <TouchableOpacity style={styles.startButton}>
             <Text style={styles.startButtonText}>Start</Text>
@@ -123,6 +124,14 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
 
+  workoutTitleSNB: {
+    fontSize: 30,
+    fontWeight: 'bold',
+    color: '#fff',
+    lineHeight: 30,
+    marginTop: 5,
+  },
+
   workoutSubText: {
     fontSize: 16,
     color: '#fff',
@@ -136,7 +145,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     width: 100,
-    marginTop: 25,
+    marginTop: 1,
   },
 
   startButtonText: {
