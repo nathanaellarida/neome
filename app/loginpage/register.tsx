@@ -1,25 +1,49 @@
-import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
-import { router } from 'expo-router';
+import React, { useEffect } from "react";
+import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions, Alert } from "react-native";
+import { router } from "expo-router";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "../../firebaseConfig";
 
-// Import assets (same as index.tsx)
-const BACKGROUND_IMG = require('../assets/images/bottompage.png'); 
-const LOGO = require('../assets/images/logo.png'); 
-const WELCOME = require('../assets/images/Welcome.png');
+// ✅ Image Paths
+const BACKGROUND_IMG = require("../assets/images/bottompage.png");
+const LOGO = require("../assets/images/logo.png");
+const WELCOME = require("../assets/images/Welcome.png");
 
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get("window");
 
 export default function Register() {
+  
+  // 🔹 Check if the user is already logged in
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        Alert.alert("Info", "You are already logged in.");
+        router.push("/onboarding/OnboardingScreen"); // ✅ Redirect if logged in
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   return (
-    <View style={styles.container}>    
+    <View style={styles.container}>
+      {/* Background Image */}
       <Image source={BACKGROUND_IMG} style={styles.bottomDesign} resizeMode="contain" />
+
+      {/* Logo */}
       <Image source={LOGO} style={styles.logo} resizeMode="contain" />
+
+      {/* Card Container */}
       <View style={styles.card}>
         <Image source={WELCOME} style={styles.welcome} resizeMode="contain" />
-        <TouchableOpacity style={styles.createButton} onPress={() => router.push('/loginpage/signIn')}>
+
+        {/* Sign-Up (Create Account) Button */}
+        <TouchableOpacity style={styles.createButton} onPress={() => router.push("/loginpage/signIn")}>
           <Text style={styles.createButtonText}>Create Account</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.loginButton} onPress={() => router.push('/loginpage/login')}>
+
+        {/* Login Button */}
+        <TouchableOpacity style={styles.loginButton} onPress={() => router.push("/loginpage/login")}>
           <Text style={styles.loginButtonText}>Login</Text>
         </TouchableOpacity>
       </View>
