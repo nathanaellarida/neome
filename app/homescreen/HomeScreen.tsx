@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, View, Text, TouchableOpacity, Dimensions, Image
 import { Ionicons } from '@expo/vector-icons';
 // Make sure to import from expo-svg if using Expo
 import Svg, { Circle } from 'react-native-svg';
+import { router } from 'expo-router';
 
 export default function HomeScreen() {
   const today = new Date();
@@ -21,9 +22,8 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {/* White Header Container */}
-        <View style={styles.headerContainer}>
+      {/* White Header Container */}
+      <View style={styles.headerContainer}>
           {/* Profile Image and Text */}
           <View style={styles.profileSection}>
           <Image source={require('../assets/images/pfp.png')} style={styles.profileImage} />
@@ -43,6 +43,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
         </View>
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
 
         {/* Date Selector (Static) */}
         <View style={styles.dateContainer}>
@@ -173,25 +174,29 @@ export default function HomeScreen() {
               <Text style={styles.progressTitle}>Focus Time</Text>
               <Text style={styles.progressSubtext}>5.4 of 6 hours</Text>
             </View>
-          </ScrollView>
+          </ScrollView>    
 
           <Text style={styles.sectionTitle}>Categories</Text>
-            <View style={styles.categoriesContainer}>
-              {[
-                { title: 'Physical\nActivities', image: require('../assets/images/physicalacts.png') },
-                { title: 'Mental\nActivities', image: require('../assets/images/mentalacts.png') },
-                { title: 'Social\nActivities', image: require('../assets/images/socialacts.png') },
-                { title: 'Emotional\nActivities', image: require('../assets/images/emotionalacts.png') },
-              ].map((category, index) => (
-                <TouchableOpacity key={index} style={styles.categoryButton}>
-                  <Image source={category.image} style={styles.categoryImage} />
-                  <View style={styles.categoryTextContainer}>
-                    <Text style={styles.categoryText}>{category.title}</Text>
-                    <Text style={styles.categorySubtext}>20 Activities</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
+          <View style={styles.categoriesContainer}>
+            {[
+              { title: 'Physical\nActivities', image: require('../assets/images/physicalacts.png'), screen: '/physical_activities/workoutPlans' },
+              { title: 'Mental\nActivities', image: require('../assets/images/mentalacts.png'), screen: '/categories/MentalActivities' },
+              { title: 'Social\nActivities', image: require('../assets/images/socialacts.png'), screen: '/categories/SocialActivities' },
+              { title: 'Emotional\nActivities', image: require('../assets/images/emotionalacts.png'), screen: '/categories/EmotionalActivities' },
+            ].map((category, index) => (
+              <TouchableOpacity 
+                key={index} 
+                style={styles.categoryButton} 
+                onPress={() => router.push(category.screen as any)} // ✅ Navigate to category screen
+              >
+                <Image source={category.image} style={styles.categoryImage} />
+                <View style={styles.categoryTextContainer}>
+                  <Text style={styles.categoryText}>{category.title}</Text>
+                  <Text style={styles.categorySubtext}>20 Activities</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
 
         {/* Challenge Yourself Section */}
         <View style={styles.challengeContainer}>
@@ -384,8 +389,6 @@ export default function HomeScreen() {
         </View>
 
         </ScrollView>
-
-
 
       {/* Bottom Navigation Bar */}
       <View style={styles.bottomNav}>
