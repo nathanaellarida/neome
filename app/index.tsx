@@ -12,7 +12,7 @@ const { width, height } = Dimensions.get('window');
 
 export default function Index() {
   const handlePress = () => {
-    router.push('/loginpage/login'); // ✅ Navigate to SignIn.tsx when tapped
+    router.push('/loginpage/register'); // ✅ Navigate to SignIn.tsx when tapped
   };
 
   return (
