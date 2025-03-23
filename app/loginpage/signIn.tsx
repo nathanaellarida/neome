@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Modal,
 } from "react-native";
 import { router } from "expo-router";
 import Checkbox from "expo-checkbox";
@@ -27,6 +28,10 @@ const CREATE_ACCOUNT_TITLE = require("../assets/images/createAccount.png");
 const OPEN_EYE = require("../assets/images/openEyes.png");
 const CLOSE_EYE = require("../assets/images/eyeOff.png");
 const BACK_ICON = require("../assets/images/leftBack.png");
+const EMAIL_ICON = require("../assets/images/email.png");
+const EMAIL_TEXT = require("../assets/images/emailText.png");
+const CHECK_ICON = require("../assets/images/check.png");
+const CREATED_ACCOUNT_TEXT = require("../assets/images/createAccount.png");
 
 const { width, height } = Dimensions.get("window");
 
@@ -47,7 +52,6 @@ export default function SignIn() {
     setForm({ ...form, [name]: value });
   };
 
-  // 🔹 Handle User Registration
   const handleSignIn = async () => {
     if (!isChecked) {
       Alert.alert("Error", "You must agree to the Terms and Conditions.");
@@ -59,16 +63,21 @@ export default function SignIn() {
       return;
     }
 
-    console.log("Sign-In Data:", form);
-    setVerificationVisible(true);
+    try {
+      await createUserWithEmailAndPassword(auth, form.email, form.password);
+      Alert.alert("Success", "Registration Successful! 🎉");
+      setVerificationVisible(true); // Show verification modal
+    } catch (error) {
+      Alert.alert("Registration Failed", (error as any)?.message || "Unknown error");
+    }
   };
 
   const handleVerify = (code: string) => {
     if (code.length === 6) {
       setVerificationVisible(false);
       setTimeout(() => {
-        setAccountCreatedVisible(true); // ✅ This ensures modal opens
-      }, 500); // Add slight delay to ensure state updates correctly
+        setAccountCreatedVisible(true);
+      }, 500);
     } else {
       alert("Please enter a valid 6-digit code.");
     }
@@ -79,37 +88,23 @@ export default function SignIn() {
     router.push('/onboarding/OnboardingScreen');
   };
 
-    try {
-      await createUserWithEmailAndPassword(auth, form.email, form.password);
-      Alert.alert("Success", "Registration Successful! 🎉");
-      router.push("/onboarding/OnboardingScreen"); // ✅ Navigate to Onboarding
-    } catch (error) {
-      Alert.alert("Registration Failed", (error as any)?.message || "Unknown error");
-    }
-  };
-
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         <View style={styles.container}>
-          {/* Background Image */}
           <Image source={BACKGROUND_IMG} style={styles.topBackground} resizeMode="cover" />
 
-          {/* Back Button */}
           <TouchableOpacity style={styles.backButtonContainer} onPress={() => router.push("/loginpage/login")}>
             <View style={styles.backButton}>
               <Image source={BACK_ICON} style={styles.backIcon} resizeMode="contain" />
             </View>
           </TouchableOpacity>
 
-          {/* Logo */}
           <Image source={WHITE_LOGO} style={styles.logo} resizeMode="contain" />
 
-          {/* Card Container */}
           <View style={styles.card}>
             <Image source={CREATE_ACCOUNT_TITLE} style={styles.title} resizeMode="contain" />
 
-            {/* Email Field */}
             <View style={styles.inputContainer}>
               <Image source={MAIL_ICON} style={styles.icon} />
               <TextInput
@@ -122,7 +117,6 @@ export default function SignIn() {
               />
             </View>
 
-            {/* Password Field */}
             <View style={styles.inputContainer}>
               <Image source={LOCK_ICON} style={styles.icon} />
               <TextInput
@@ -138,7 +132,6 @@ export default function SignIn() {
               </TouchableOpacity>
             </View>
 
-            {/* Confirm Password Field */}
             <View style={styles.inputContainer}>
               <Image source={LOCK_ICON} style={styles.icon} />
               <TextInput
@@ -154,7 +147,6 @@ export default function SignIn() {
               </TouchableOpacity>
             </View>
 
-            {/* Terms and Conditions */}
             <View style={styles.checkboxContainer}>
               <Checkbox value={isChecked} onValueChange={setChecked} color={isChecked ? "#6549FE" : undefined} />
               <Text style={styles.checkboxText}>
@@ -163,39 +155,37 @@ export default function SignIn() {
             </View>
           </View>
 
-          {/* Sign-In Button */}
           <TouchableOpacity style={styles.signInButton} onPress={handleSignIn}>
             <Text style={styles.signInButtonText}>Sign Up</Text>
           </TouchableOpacity>
 
-          {/* Login Link */}
           <View style={styles.signUpContainer}>
             <Text style={styles.signUpText}>Already have an account?</Text>
             <Text style={styles.link} onPress={() => router.push("/loginpage/login")}>Login here</Text>
           </View>
-          {/* Email Verification Modal */}
-            <EmailVerificationModal
+
+          <EmailVerificationModal
             isVisible={isVerificationVisible}
             onClose={() => setVerificationVisible(false)}
-            onVerify={handleVerify} // ✅ Ensure this is passed correctly
+            onVerify={handleVerify}
           />
 
-          {/* Successfully Created Account Modal */}
-          <AccountCreatedModal 
-              isVisible={isAccountCreatedVisible} 
-              onContinue={handleContinue} 
-            />
+          <AccountCreatedModal
+            isVisible={isAccountCreatedVisible}
+            onContinue={handleContinue}
+          />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
+// 🔹 Email Verification Modal Component
 const EmailVerificationModal = ({ isVisible, onClose, onVerify }: { isVisible: boolean; onClose: () => void; onVerify: (code: string) => void }) => {
   const [verificationCode, setVerificationCode] = useState('');
   const [timer, setTimer] = useState(60);
   const [isResendVisible, setResendVisible] = useState(false);
-  const [errorMessage, setErrorMessage] = useState(''); // ✅ Store error message
+  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     if (timer > 0) {
@@ -212,24 +202,22 @@ const EmailVerificationModal = ({ isVisible, onClose, onVerify }: { isVisible: b
     setTimer(60);
     setResendVisible(false);
     console.log("New verification code sent!");
-    setErrorMessage(''); // ✅ Clear error message when resending
-    setVerificationCode(''); // ✅ Clear input field
+    setErrorMessage('');
+    setVerificationCode('');
   };
 
   const handleVerify = () => {
     if (verificationCode.length === 6) {
-      setErrorMessage(''); // ✅ Clear error when correct
+      setErrorMessage('');
       onVerify(verificationCode);
     } else {
-      setErrorMessage('Please enter a valid 6-digit code'); // ✅ Show error if invalid
+      setErrorMessage('Please enter a valid 6-digit code');
     }
   };
 
   const handleTextChange = (text: string) => {
-    setVerificationCode(text.replace(/[^0-9]/g, '')); // ✅ Only allow numbers
-    if (errorMessage) {
-      setErrorMessage(''); // ✅ Remove error message when user starts typing
-    }
+    setVerificationCode(text.replace(/[^0-9]/g, ''));
+    if (errorMessage) setErrorMessage('');
   };
 
   return (
@@ -238,29 +226,21 @@ const EmailVerificationModal = ({ isVisible, onClose, onVerify }: { isVisible: b
         <View style={styles.modalContent}>
           <Image source={EMAIL_ICON} style={styles.emailIcon} resizeMode="contain" />
           <Image source={EMAIL_TEXT} style={styles.emailText} resizeMode="contain" />
-
-          {/* Input Field with Error Handling */}
           <View style={[styles.inputContainer, errorMessage ? styles.inputError : null]}>
             <Image source={MAIL_ICON} style={styles.icon} />
-            <TextInput 
+            <TextInput
               style={styles.input}
               placeholder="Verification Code"
               keyboardType="numeric"
               maxLength={6}
               value={verificationCode}
-              onChangeText={handleTextChange} // ✅ Automatically clears error when typing
+              onChangeText={handleTextChange}
             />
           </View>
-
-          {/* Show Error Message Below Input Field */}
           {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-
-          {/* Verify Button */}
           <TouchableOpacity style={styles.verifyButton} onPress={handleVerify}>
             <Text style={styles.verifyButtonText}>Verify</Text>
           </TouchableOpacity>
-
-          {/* Resend Code Button */}
           {!isResendVisible ? (
             <Text style={styles.timerText}>Resend Code in {timer}s</Text>
           ) : (
@@ -272,9 +252,9 @@ const EmailVerificationModal = ({ isVisible, onClose, onVerify }: { isVisible: b
       </View>
     </Modal>
   );
-};  
+};
 
-// ✅ Successfully Created Account Modal
+// 🔹 Account Created Modal Component
 const AccountCreatedModal = ({ isVisible, onContinue }: { isVisible: boolean; onContinue: () => void }) => {
   return (
     <Modal visible={isVisible} transparent animationType="fade">
