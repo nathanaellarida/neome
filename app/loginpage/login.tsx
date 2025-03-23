@@ -36,10 +36,9 @@ export default function Login() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        router.push("/onboarding/OnboardingScreen"); // ✅ Redirect if logged in
+        router.push("/onboarding/OnboardingScreen");
       }
     });
-
     return () => unsubscribe();
   }, []);
 
@@ -54,13 +53,12 @@ export default function Login() {
       Alert.alert("Error", "Please enter both email and password.");
       return;
     }
-  
+
     try {
       await signInWithEmailAndPassword(auth, form.email, form.password);
       Alert.alert("Success", "Login Successful! 🎉");
-      router.push("/onboarding/OnboardingScreen"); // ✅ Navigate after login
+      router.push("/onboarding/OnboardingScreen");
     } catch (error) {
-      // Explicitly cast 'error' to 'any' or 'FirebaseError'
       const errorMessage = (error as any)?.message || "An unknown error occurred.";
       Alert.alert("Login Failed", errorMessage);
     }
@@ -113,6 +111,13 @@ export default function Login() {
               />
               <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
                 <Image source={showPassword ? OPEN_EYE : CLOSE_EYE} style={styles.eyeIcon} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Forgot Password */}
+            <View style={styles.forgotPasswordContainer}>
+              <TouchableOpacity onPress={() => router.push("/loginpage/forgotPassword")}>
+                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
               </TouchableOpacity>
             </View>
 
