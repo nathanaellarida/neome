@@ -1,51 +1,78 @@
-import React, { useState } from 'react';
-import { 
-  View, Text, TextInput, Image, TouchableOpacity, StyleSheet, 
-  Dimensions, ScrollView, KeyboardAvoidingView, Platform 
-} from 'react-native';
-import { router } from 'expo-router';
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  Image,
+  TouchableOpacity,
+  StyleSheet,
+  Dimensions,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
+} from "react-native";
+import { router } from "expo-router";
+import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
+import { auth } from "../../firebaseConfig";
 
 // ✅ Image Paths
-const BACKGROUND_IMG = require('../assets/images/upper_page_design.png');  
-const WHITE_LOGO = require('../assets/images/neomeLogo.png');  
-const MAIL_ICON = require('../assets/images/mail.png');  
-const LOCK_ICON = require('../assets/images/lock.png');  
-const LOGIN_TITLE = require('../assets/images/welcomeBack.png');  
-const OPEN_EYE = require('../assets/images/openEyes.png');  
-const CLOSE_EYE = require('../assets/images/eyeOff.png');  
-const BACK_ICON = require('../assets/images/leftBack.png');
+const BACKGROUND_IMG = require("../assets/images/upper_page_design.png");
+const WHITE_LOGO = require("../assets/images/neomeLogo.png");
+const MAIL_ICON = require("../assets/images/mail.png");
+const LOCK_ICON = require("../assets/images/lock.png");
+const LOGIN_TITLE = require("../assets/images/welcomeBack.png");
+const OPEN_EYE = require("../assets/images/openEyes.png");
+const CLOSE_EYE = require("../assets/images/eyeOff.png");
+const BACK_ICON = require("../assets/images/leftBack.png");
 
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get("window");
 
 export default function Login() {
-  const [form, setForm] = useState({
-    email: '',
-    password: '',
-  });
-
+  const [form, setForm] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
 
+  // 🔹 Check if the user is already logged in
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        router.push("/onboarding/OnboardingScreen");
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // 🔹 Handle Input Change
   const handleInputChange = (name: string, value: string) => {
     setForm({ ...form, [name]: value });
   };
 
-  const handleLoginPress = () => {
-    router.push('/onboarding/OnboardingScreen'); // ✅ Directly navigates to OnboardingScreen
-  };
+  // 🔹 Login Function
+  const handleLoginPress = async () => {
+    if (!form.email || !form.password) {
+      Alert.alert("Error", "Please enter both email and password.");
+      return;
+    }
 
-  const handleBackPress = () => {
-    router.push('/loginpage/register');
+    try {
+      await signInWithEmailAndPassword(auth, form.email, form.password);
+      Alert.alert("Success", "Login Successful! 🎉");
+      router.push("/onboarding/OnboardingScreen");
+    } catch (error) {
+      const errorMessage = (error as any)?.message || "An unknown error occurred.";
+      Alert.alert("Login Failed", errorMessage);
+    }
   };
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        <View style={styles.container}>    
+        <View style={styles.container}>
           {/* Background Image */}
           <Image source={BACKGROUND_IMG} style={styles.topBackground} resizeMode="cover" />
 
           {/* Back Button */}
-          <TouchableOpacity style={styles.backButtonContainer} onPress={handleBackPress}>
+          <TouchableOpacity style={styles.backButtonContainer} onPress={() => router.push("/loginpage/register")}>
             <View style={styles.backButton}>
               <Image source={BACK_ICON} style={styles.backIcon} resizeMode="contain" />
             </View>
@@ -56,32 +83,31 @@ export default function Login() {
 
           {/* Card Container */}
           <View style={styles.card}>
-            {/* Title */}
             <Image source={LOGIN_TITLE} style={styles.title} resizeMode="contain" />
 
             {/* Email Field */}
             <View style={styles.inputContainer}>
               <Image source={MAIL_ICON} style={styles.icon} />
-              <TextInput 
-                style={styles.input} 
+              <TextInput
+                style={styles.input}
                 placeholder="Enter email"
                 placeholderTextColor="#888"
                 keyboardType="email-address"
                 value={form.email}
-                onChangeText={(text) => handleInputChange('email', text)}
+                onChangeText={(text) => handleInputChange("email", text)}
               />
             </View>
 
             {/* Password Field with Eye Toggle */}
             <View style={styles.inputContainer}>
               <Image source={LOCK_ICON} style={styles.icon} />
-              <TextInput 
-                style={styles.input} 
+              <TextInput
+                style={styles.input}
                 placeholder="Enter password"
                 placeholderTextColor="#888"
                 secureTextEntry={!showPassword}
                 value={form.password}
-                onChangeText={(text) => handleInputChange('password', text)}
+                onChangeText={(text) => handleInputChange("password", text)}
               />
               <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
                 <Image source={showPassword ? OPEN_EYE : CLOSE_EYE} style={styles.eyeIcon} />
@@ -89,36 +115,16 @@ export default function Login() {
             </View>
 
             {/* Forgot Password */}
-            <TouchableOpacity 
-              style={styles.forgotPasswordContainer} 
-              onPress={() => router.push('/loginpage/forgotPassword')}
-            >
-              <Text style={styles.forgotPasswordText}>Forgot password?</Text>
-            </TouchableOpacity>
+            <View style={styles.forgotPasswordContainer}>
+              <TouchableOpacity onPress={() => router.push("/loginpage/forgotPassword")}>
+                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+              </TouchableOpacity>
+            </View>
 
             {/* Login Button */}
             <TouchableOpacity style={styles.loginButton} onPress={handleLoginPress}>
               <Text style={styles.loginButtonText}>Login</Text>
             </TouchableOpacity>
-
-            {/* Sign-Up Link */}
-            <View style={styles.signUpContainer}>
-              <Text style={styles.signUpText}>New user?</Text>
-              <Text style={styles.link} onPress={() => router.push('/loginpage/signIn')}> Sign Up</Text>
-            </View>
-
-            {/* Divider */}
-            <View style={styles.dividerContainer}>
-              <View style={styles.divider} />
-              <Text style={styles.orText}>OR</Text>
-              <View style={styles.divider} />
-            </View>
-          
-            {/* Sign-in with another account */}
-            <TouchableOpacity>
-              <Text style={styles.otherLoginText}>Sign in with another account</Text>
-            </TouchableOpacity>
-
           </View>
         </View>
       </ScrollView>
@@ -270,4 +276,17 @@ const styles = StyleSheet.create({
     color: '#6549FE',
     fontWeight: 'bold',
   },
+  backButton: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },  
 });
