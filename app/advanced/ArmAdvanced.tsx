@@ -47,7 +47,7 @@ export default function ArmAdvanced() {
         <View style={styles.headerContent}>
           <Text style={styles.workoutTitle}>Arm Advanced</Text>
           <Text style={styles.workoutSubText}>20 minutes - 16 Workouts</Text>
-          <TouchableOpacity style={styles.startButton}>
+          <TouchableOpacity style={styles.startButton} onPress={() => router.push('/startWorkout/ReadyToGo')}>
             <Text style={styles.startButtonText}>Start</Text>
           </TouchableOpacity>
         </View>
