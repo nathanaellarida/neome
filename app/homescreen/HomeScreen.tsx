@@ -411,7 +411,7 @@ export default function HomeScreen() {
           <Ionicons name="calendar-outline" size={25} color="#6549FE" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navButton}>
+        <TouchableOpacity style={styles.navButton} onPress={() => router.push('/messaging/MessageHome')}>
           <Ionicons name="chatbubble-ellipses-outline" size={25} color="#6549FE" />
         </TouchableOpacity>
       </View>
