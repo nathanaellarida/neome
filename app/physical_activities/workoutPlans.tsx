@@ -51,7 +51,7 @@ export default function WorkoutPlans() {
             <Text style={styles.challengeText}>7x4 Challenge</Text>
             <Text style={styles.challengeTitle}>Full Body</Text>
             <Text style={styles.challengeTitle}>Workout</Text>
-            <TouchableOpacity style={styles.startButton} onPress={() => router.push('/physical_activities/fullBodyWorkout')}>
+            <TouchableOpacity style={styles.startButton} onPress={() => router.push('/physical_activities/fullBodyWorkoutGoal')}>
             <Text style={styles.startButtonText}>Start</Text>
             </TouchableOpacity>
         </View>
