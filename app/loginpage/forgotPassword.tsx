@@ -1,129 +1,122 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, Text, TextInput, Image, TouchableOpacity, StyleSheet, 
-  Dimensions, KeyboardAvoidingView, ScrollView, Platform, Modal 
+import {
+  View, Text, TextInput, Image, TouchableOpacity, StyleSheet,
+  Dimensions, KeyboardAvoidingView, ScrollView, Platform, Modal
 } from 'react-native';
 import { router } from 'expo-router';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { getApp } from 'firebase/app';
 
 // ✅ Image Imports
 const TOP_BORDER = require('../assets/images/forgotBorder.png');
 const LOCK_ICON = require('../assets/images/lockPassword.png');
 const CHANGE_PASS_TEXT = require('../assets/images/changePassword.png');
 const BACK_ICON = require('../assets/images/backPurple.png');
-const EMAIL_ICON = require('../assets/images/email.png');  
+const EMAIL_ICON = require('../assets/images/email.png');
 const EMAIL_TEXT = require('../assets/images/emailText.png');
 
 const { width, height } = Dimensions.get('window');
 
 export default function ForgotPassword() {
-    const [email, setEmail] = useState('');
-    const [errorMessage, setErrorMessage] = useState('');
-    const [isVerificationVisible, setVerificationVisible] = useState(false);
-  
-    const handleSend = () => {
-      if (!email.includes('@') || !email.includes('.')) {
-        setErrorMessage('Please enter a valid email address.');
-        return;
-      }
+  const [email, setEmail] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isVerificationVisible, setVerificationVisible] = useState(false);
+
+  const handleSend = async () => {
+    if (!email.includes('@') || !email.includes('.')) {
+      setErrorMessage('Please enter a valid email address.');
+      return;
+    }
+
+    try {
+      const functions = getFunctions(getApp());
+      const sendCode = httpsCallable(functions, 'sendVerificationCode');
+      await sendCode({ email });
+
       setErrorMessage('');
-      console.log("Verification email sent to:", email);
       setVerificationVisible(true);
-    };
-  
-    const handleBackPress = () => {
-      router.push('/loginpage/login'); // ✅ Redirect back to Login Page
-    };
-  
-    // Modified to properly handle verification success
-    const handleVerify = () => {
-      setVerificationVisible(false);
-      // Navigate to new password page AFTER closing the modal
-      setTimeout(() => {
-        router.push('/loginpage/newPassword');
-      }, 100);
-    };
-  
-    return (
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === "ios" ? "padding" : "height"} 
-        style={styles.container}
-      >
-        <ScrollView 
-          contentContainerStyle={styles.scrollContainer} 
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Top White Border */}
-          <Image source={TOP_BORDER} style={styles.topBorder} resizeMode="contain" />
-  
-          {/* Back Button */}
-          <TouchableOpacity style={styles.backButtonContainer} onPress={handleBackPress}>
-            <View style={styles.backButtonRow}> 
-              <Image source={BACK_ICON} style={styles.backIcon} resizeMode="contain" />
-              <Text style={styles.backText}>Forgot Password</Text>
-            </View>
-          </TouchableOpacity>
-  
-          {/* Card Container */}
-          <View style={styles.card}>
-            {/* Lock Icon */}
-            <Image source={LOCK_ICON} style={styles.lockIcon} resizeMode="contain" />
-  
-            {/* Change Password Text */}
-            <Image source={CHANGE_PASS_TEXT} style={styles.description} resizeMode="contain" />
-  
-            {/* Email Input Field */}
-            <View style={[styles.inputContainer, errorMessage ? styles.inputError : null]}>
-              <TextInput 
-                style={styles.input} 
-                placeholder="Email Address"
-                placeholderTextColor="#888"
-                keyboardType="email-address"
-                value={email}
-                onChangeText={(text) => {
-                  setEmail(text);
-                  if (errorMessage) setErrorMessage('');
-                }}
-              />
-            </View>
-  
-            {/* Show Error Message */}
-            {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-  
-            {/* Divider Line */}
-            <View style={styles.divider} />
-  
-            {/* Try Another Way Link */}
-            <TouchableOpacity>
-              <Text style={styles.tryAnotherWayText}>Try Another Way</Text>
-            </TouchableOpacity>
-  
-            {/* Send Button */}
-            <TouchableOpacity style={styles.sendButton} onPress={handleSend}>
-              <Text style={styles.sendButtonText}>Send</Text>
-            </TouchableOpacity>
+    } catch (err: any) {
+      console.error(err);
+      setErrorMessage('Failed to send verification code.');
+    }
+  };
+
+  const handleBackPress = () => {
+    router.push('/loginpage/login');
+  };
+
+  const handleVerify = () => {
+    setVerificationVisible(false);
+    setTimeout(() => {
+      router.push('/loginpage/newPassword');
+    }, 100);
+  };
+
+  return (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
+    >
+      <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
+        <Image source={TOP_BORDER} style={styles.topBorder} resizeMode="contain" />
+
+        <TouchableOpacity style={styles.backButtonContainer} onPress={handleBackPress}>
+          <View style={styles.backButtonRow}>
+            <Image source={BACK_ICON} style={styles.backIcon} resizeMode="contain" />
+            <Text style={styles.backText}>Forgot Password</Text>
+          </View>
+        </TouchableOpacity>
+
+        <View style={styles.card}>
+          <Image source={LOCK_ICON} style={styles.lockIcon} resizeMode="contain" />
+          <Image source={CHANGE_PASS_TEXT} style={styles.description} resizeMode="contain" />
+
+          <View style={[styles.inputContainer, errorMessage ? styles.inputError : null]}>
+            <TextInput
+              style={styles.input}
+              placeholder="Email Address"
+              placeholderTextColor="#888"
+              keyboardType="email-address"
+              value={email}
+              onChangeText={(text) => {
+                setEmail(text);
+                if (errorMessage) setErrorMessage('');
+              }}
+            />
           </View>
 
-          {/* Email Verification Modal - Moved outside the card for proper rendering */}
-          <EmailVerificationModal
-            isVisible={isVerificationVisible}
-            onClose={() => setVerificationVisible(false)}
-            onVerify={handleVerify}
-            email={email}
-          />
-        </ScrollView>
-      </KeyboardAvoidingView>
-    );
-  }  
+          {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
 
-// ✅ Email Verification Modal Component - Modified for proper flow
-const EmailVerificationModal = ({ 
-  isVisible, 
-  onClose, 
+          <View style={styles.divider} />
+
+          <TouchableOpacity>
+            <Text style={styles.tryAnotherWayText}>Try Another Way</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.sendButton} onPress={handleSend}>
+            <Text style={styles.sendButtonText}>Send</Text>
+          </TouchableOpacity>
+        </View>
+
+        <EmailVerificationModal
+          isVisible={isVerificationVisible}
+          onClose={() => setVerificationVisible(false)}
+          onVerify={handleVerify}
+          email={email}
+        />
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+const EmailVerificationModal = ({
+  isVisible,
+  onClose,
   onVerify,
-  email 
-}: { 
-  isVisible: boolean; 
-  onClose: () => void; 
+  email
+}: {
+  isVisible: boolean;
+  onClose: () => void;
   onVerify: () => void;
   email: string;
 }) => {
@@ -134,7 +127,6 @@ const EmailVerificationModal = ({
 
   useEffect(() => {
     if (isVisible) {
-      // Reset state when modal opens
       setVerificationCode('');
       setErrorMessage('');
       setTimer(60);
@@ -145,43 +137,52 @@ const EmailVerificationModal = ({
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (isVisible && timer > 0) {
-      interval = setInterval(() => {
-        setTimer((prev) => prev - 1);
-      }, 1000);
+      interval = setInterval(() => setTimer((prev) => prev - 1), 1000);
     } else if (timer === 0) {
       setResendVisible(true);
     }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
+    return () => clearInterval(interval);
   }, [timer, isVisible]);
 
-  const handleResendCode = () => {
+  const handleResendCode = async () => {
     setTimer(60);
     setResendVisible(false);
-    console.log("New verification code sent!");
     setErrorMessage('');
     setVerificationCode('');
+
+    try {
+      const functions = getFunctions(getApp());
+      const sendCode = httpsCallable(functions, 'sendVerificationCode');
+      await sendCode({ email });
+    } catch (err) {
+      console.error(err);
+      setErrorMessage('Resend failed.');
+    }
   };
 
-  // Modified to call parent handler instead of directly navigating
-  const handleVerify = () => {
-    if (verificationCode.length === 6) {
-      // Call the parent's onVerify function to handle navigation
-      onVerify();
-    } else {
+  const handleVerifyCode = async () => {
+    if (verificationCode.length !== 6) {
       setErrorMessage('Please enter a valid 6-digit code');
+      return;
     }
-  };  
-  
-  const handleTextChange = (text: string) => {
-    setVerificationCode(text.replace(/[^0-9]/g, ''));
-    if (errorMessage) {
-      setErrorMessage('');
+
+    try {
+      const functions = getFunctions(getApp());
+      const verifyCode = httpsCallable(functions, 'verifyCode');
+      const response = await verifyCode({ email, code: verificationCode });
+
+      if ((response.data as any).valid) {
+        onVerify(); // Navigate
+      } else {
+        setErrorMessage('Invalid or expired verification code.');
+      }
+    } catch (err) {
+      console.error(err);
+      setErrorMessage('Verification failed.');
     }
   };
 
-  const truncatedEmail = email.length > 15 
+  const truncatedEmail = email.length > 15
     ? `${email.substring(0, 7)}...${email.substring(email.lastIndexOf('@'))}`
     : email;
 
@@ -191,35 +192,30 @@ const EmailVerificationModal = ({
         <View style={styles.modalContent}>
           <Image source={EMAIL_ICON} style={styles.emailIcon} resizeMode="contain" />
           <Image source={EMAIL_TEXT} style={styles.emailText} resizeMode="contain" />
-          
-          {/* Display the email address */}
-          {email ? (
-            <Text style={styles.emailAddressText}>
-              Please enter the 6-digit code sent to {truncatedEmail}
-            </Text>
-          ) : null}
+          <Text style={styles.emailAddressText}>
+            Please enter the 6-digit code sent to {truncatedEmail}
+          </Text>
 
-          {/* Input Field */}
           <View style={[styles.inputContainer, errorMessage ? styles.inputError : null]}>
-            <TextInput 
+            <TextInput
               style={styles.input}
               placeholder="Verification Code"
               keyboardType="numeric"
               maxLength={6}
               value={verificationCode}
-              onChangeText={handleTextChange}
+              onChangeText={(text) => {
+                setVerificationCode(text.replace(/[^0-9]/g, ''));
+                if (errorMessage) setErrorMessage('');
+              }}
             />
           </View>
 
-          {/* Show Error Message */}
           {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
 
-          {/* Verify Button */}
-          <TouchableOpacity style={styles.verifyButton} onPress={handleVerify}>
+          <TouchableOpacity style={styles.verifyButton} onPress={handleVerifyCode}>
             <Text style={styles.verifyButtonText}>Verify</Text>
           </TouchableOpacity>
 
-          {/* Resend Code Button */}
           {!isResendVisible ? (
             <Text style={styles.timerText}>Resend Code in {timer}s</Text>
           ) : (

@@ -1,32 +1,46 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Image, TouchableOpacity, StyleSheet, Dimensions, ScrollView, KeyboardAvoidingView, Platform, Modal } from 'react-native';
-import { router } from 'expo-router';
-import Checkbox from 'expo-checkbox';
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  Image,
+  TouchableOpacity,
+  StyleSheet,
+  Dimensions,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
+  Modal,
+} from "react-native";
+import { router } from "expo-router";
+import Checkbox from "expo-checkbox";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../../firebaseConfig";
 
-// ✅ Corrected Image Paths
-const BACKGROUND_IMG = require('../assets/images/upper_page_design.png');  
-const WHITE_LOGO = require('../assets/images/neomeLogo.png');  
-const USER_ICON = require('../assets/images/user.png');  
-const MAIL_ICON = require('../assets/images/mail.png');  
-const LOCK_ICON = require('../assets/images/lock.png');  
-const CREATE_ACCOUNT_TITLE = require('../assets/images/createAccount.png');  
-const OPEN_EYE = require('../assets/images/openEyes.png');  
-const CLOSE_EYE = require('../assets/images/eyeOff.png');  
-const BACK_ICON = require('../assets/images/leftBack.png'); // Add a back arrow icon
-const EMAIL_ICON = require('../assets/images/email.png');  
-const EMAIL_TEXT = require('../assets/images/emailText.png');
-const CHECK_ICON = require('../assets/images/check.png');  
-const CREATED_ACCOUNT_TEXT = require('../assets/images/createdAccountText.png'); 
+// ✅ Image Paths
+const BACKGROUND_IMG = require("../assets/images/upper_page_design.png");
+const WHITE_LOGO = require("../assets/images/neomeLogo.png");
+const USER_ICON = require("../assets/images/user.png");
+const MAIL_ICON = require("../assets/images/mail.png");
+const LOCK_ICON = require("../assets/images/lock.png");
+const CREATE_ACCOUNT_TITLE = require("../assets/images/createAccount.png");
+const OPEN_EYE = require("../assets/images/openEyes.png");
+const CLOSE_EYE = require("../assets/images/eyeOff.png");
+const BACK_ICON = require("../assets/images/leftBack.png");
+const EMAIL_ICON = require("../assets/images/email.png");
+const EMAIL_TEXT = require("../assets/images/emailText.png");
+const CHECK_ICON = require("../assets/images/check.png");
+const CREATED_ACCOUNT_TEXT = require("../assets/images/createAccount.png");
 
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get("window");
 
 export default function SignIn() {
   const [isChecked, setChecked] = useState(false);
   const [form, setForm] = useState({
-    username: '',
-    email: '',
-    password: '',
-    confirmPassword: ''
+    email: "",
+    password: "",
+    confirmPassword: "",
   });
 
   const [showPassword, setShowPassword] = useState(false);
@@ -38,21 +52,32 @@ export default function SignIn() {
     setForm({ ...form, [name]: value });
   };
 
-  const handleSignIn = () => {
+  const handleSignIn = async () => {
     if (!isChecked) {
-      alert("You must agree to the Terms and Conditions.");
+      Alert.alert("Error", "You must agree to the Terms and Conditions.");
       return;
     }
-    console.log("Sign-In Data:", form);
-    setVerificationVisible(true);
+
+    if (form.password !== form.confirmPassword) {
+      Alert.alert("Error", "Passwords do not match.");
+      return;
+    }
+
+    try {
+      await createUserWithEmailAndPassword(auth, form.email, form.password);
+      Alert.alert("Success", "Registration Successful! 🎉");
+      setVerificationVisible(true); // Show verification modal
+    } catch (error) {
+      Alert.alert("Registration Failed", (error as any)?.message || "Unknown error");
+    }
   };
 
   const handleVerify = (code: string) => {
     if (code.length === 6) {
       setVerificationVisible(false);
       setTimeout(() => {
-        setAccountCreatedVisible(true); // ✅ This ensures modal opens
-      }, 500); // Add slight delay to ensure state updates correctly
+        setAccountCreatedVisible(true);
+      }, 500);
     } else {
       alert("Please enter a valid 6-digit code.");
     }
@@ -63,142 +88,104 @@ export default function SignIn() {
     router.push('/onboarding/OnboardingScreen');
   };
 
-  const handleBackPress = () => {
-    router.push('/loginpage/register');
-  };
-
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={{ flex: 1 }}
-    >
-      <ScrollView
-        contentContainerStyle={styles.scrollContainer}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.container}>    
-          {/* Background Image at the Top */}
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
+      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+        <View style={styles.container}>
           <Image source={BACKGROUND_IMG} style={styles.topBackground} resizeMode="cover" />
 
-          {/* Back Button - Improved Visibility */}
-          <TouchableOpacity 
-            style={styles.backButtonContainer} 
-            onPress={handleBackPress}
-          >
+          <TouchableOpacity style={styles.backButtonContainer} onPress={() => router.push("/loginpage/login")}>
             <View style={styles.backButton}>
-              <Image 
-                source={BACK_ICON} 
-                style={styles.backIcon} 
-                resizeMode="contain"
-              />
+              <Image source={BACK_ICON} style={styles.backIcon} resizeMode="contain" />
             </View>
           </TouchableOpacity>
 
-          {/* Logo */}
           <Image source={WHITE_LOGO} style={styles.logo} resizeMode="contain" />
 
-          {/* Card Container */}
           <View style={styles.card}>
-            {/* Title */}
             <Image source={CREATE_ACCOUNT_TITLE} style={styles.title} resizeMode="contain" />
 
-            {/* Username Field */}
-            <View style={styles.inputContainer}>
-              <Image source={USER_ICON} style={styles.icon} />
-              <TextInput 
-                style={styles.input} 
-                placeholder="Enter username"
-                placeholderTextColor="#888"
-                value={form.username}
-                onChangeText={(text) => handleInputChange('username', text)}
-              />
-            </View>
-
-            {/* Email Field */}
             <View style={styles.inputContainer}>
               <Image source={MAIL_ICON} style={styles.icon} />
-              <TextInput 
-                style={styles.input} 
+              <TextInput
+                style={styles.input}
                 placeholder="Enter email"
                 placeholderTextColor="#888"
                 keyboardType="email-address"
                 value={form.email}
-                onChangeText={(text) => handleInputChange('email', text)}
+                onChangeText={(text) => handleInputChange("email", text)}
               />
             </View>
 
-            {/* Password Field with Eye Toggle */}
             <View style={styles.inputContainer}>
               <Image source={LOCK_ICON} style={styles.icon} />
-              <TextInput 
-                style={styles.input} 
+              <TextInput
+                style={styles.input}
                 placeholder="Enter password"
                 placeholderTextColor="#888"
                 secureTextEntry={!showPassword}
                 value={form.password}
-                onChangeText={(text) => handleInputChange('password', text)}
+                onChangeText={(text) => handleInputChange("password", text)}
               />
               <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
                 <Image source={showPassword ? OPEN_EYE : CLOSE_EYE} style={styles.eyeIcon} />
               </TouchableOpacity>
             </View>
 
-            {/* Confirm Password Field with Eye Toggle */}
             <View style={styles.inputContainer}>
               <Image source={LOCK_ICON} style={styles.icon} />
-              <TextInput 
-                style={styles.input} 
+              <TextInput
+                style={styles.input}
                 placeholder="Confirm password"
                 placeholderTextColor="#888"
                 secureTextEntry={!showConfirmPassword}
                 value={form.confirmPassword}
-                onChangeText={(text) => handleInputChange('confirmPassword', text)}
+                onChangeText={(text) => handleInputChange("confirmPassword", text)}
               />
               <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
                 <Image source={showConfirmPassword ? OPEN_EYE : CLOSE_EYE} style={styles.eyeIcon} />
               </TouchableOpacity>
             </View>
 
-            {/* Terms and Conditions Checkbox */}
             <View style={styles.checkboxContainer}>
               <Checkbox value={isChecked} onValueChange={setChecked} color={isChecked ? "#6549FE" : undefined} />
-              <Text style={styles.checkboxText}>I agree to the <Text style={styles.link}>Terms and Conditions</Text>.</Text>
+              <Text style={styles.checkboxText}>
+                I agree to the <Text style={styles.link}>Terms and Conditions</Text>.
+              </Text>
             </View>
           </View>
 
-          {/* Sign-In Button (Outside the Card) */}
           <TouchableOpacity style={styles.signInButton} onPress={handleSignIn}>
             <Text style={styles.signInButtonText}>Sign Up</Text>
           </TouchableOpacity>
 
-          {/* Sign-Up Link */}
           <View style={styles.signUpContainer}>
             <Text style={styles.signUpText}>Already have an account?</Text>
-            <Text style={styles.link} onPress={() => router.push('/loginpage/login')}>Login from here</Text>
+            <Text style={styles.link} onPress={() => router.push("/loginpage/login")}>Login here</Text>
           </View>
-          {/* Email Verification Modal */}
-            <EmailVerificationModal
+
+          <EmailVerificationModal
             isVisible={isVerificationVisible}
             onClose={() => setVerificationVisible(false)}
-            onVerify={handleVerify} // ✅ Ensure this is passed correctly
+            onVerify={handleVerify}
           />
 
-          {/* Successfully Created Account Modal */}
-          <AccountCreatedModal 
-              isVisible={isAccountCreatedVisible} 
-              onContinue={handleContinue} 
-            />
+          <AccountCreatedModal
+            isVisible={isAccountCreatedVisible}
+            onContinue={handleContinue}
+          />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
+// 🔹 Email Verification Modal Component
 const EmailVerificationModal = ({ isVisible, onClose, onVerify }: { isVisible: boolean; onClose: () => void; onVerify: (code: string) => void }) => {
   const [verificationCode, setVerificationCode] = useState('');
   const [timer, setTimer] = useState(60);
   const [isResendVisible, setResendVisible] = useState(false);
-  const [errorMessage, setErrorMessage] = useState(''); // ✅ Store error message
+  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     if (timer > 0) {
@@ -215,24 +202,22 @@ const EmailVerificationModal = ({ isVisible, onClose, onVerify }: { isVisible: b
     setTimer(60);
     setResendVisible(false);
     console.log("New verification code sent!");
-    setErrorMessage(''); // ✅ Clear error message when resending
-    setVerificationCode(''); // ✅ Clear input field
+    setErrorMessage('');
+    setVerificationCode('');
   };
 
   const handleVerify = () => {
     if (verificationCode.length === 6) {
-      setErrorMessage(''); // ✅ Clear error when correct
+      setErrorMessage('');
       onVerify(verificationCode);
     } else {
-      setErrorMessage('Please enter a valid 6-digit code'); // ✅ Show error if invalid
+      setErrorMessage('Please enter a valid 6-digit code');
     }
   };
 
   const handleTextChange = (text: string) => {
-    setVerificationCode(text.replace(/[^0-9]/g, '')); // ✅ Only allow numbers
-    if (errorMessage) {
-      setErrorMessage(''); // ✅ Remove error message when user starts typing
-    }
+    setVerificationCode(text.replace(/[^0-9]/g, ''));
+    if (errorMessage) setErrorMessage('');
   };
 
   return (
@@ -241,29 +226,21 @@ const EmailVerificationModal = ({ isVisible, onClose, onVerify }: { isVisible: b
         <View style={styles.modalContent}>
           <Image source={EMAIL_ICON} style={styles.emailIcon} resizeMode="contain" />
           <Image source={EMAIL_TEXT} style={styles.emailText} resizeMode="contain" />
-
-          {/* Input Field with Error Handling */}
           <View style={[styles.inputContainer, errorMessage ? styles.inputError : null]}>
             <Image source={MAIL_ICON} style={styles.icon} />
-            <TextInput 
+            <TextInput
               style={styles.input}
               placeholder="Verification Code"
               keyboardType="numeric"
               maxLength={6}
               value={verificationCode}
-              onChangeText={handleTextChange} // ✅ Automatically clears error when typing
+              onChangeText={handleTextChange}
             />
           </View>
-
-          {/* Show Error Message Below Input Field */}
           {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-
-          {/* Verify Button */}
           <TouchableOpacity style={styles.verifyButton} onPress={handleVerify}>
             <Text style={styles.verifyButtonText}>Verify</Text>
           </TouchableOpacity>
-
-          {/* Resend Code Button */}
           {!isResendVisible ? (
             <Text style={styles.timerText}>Resend Code in {timer}s</Text>
           ) : (
@@ -275,9 +252,9 @@ const EmailVerificationModal = ({ isVisible, onClose, onVerify }: { isVisible: b
       </View>
     </Modal>
   );
-};  
+};
 
-// ✅ Successfully Created Account Modal
+// 🔹 Account Created Modal Component
 const AccountCreatedModal = ({ isVisible, onContinue }: { isVisible: boolean; onContinue: () => void }) => {
   return (
     <Modal visible={isVisible} transparent animationType="fade">
