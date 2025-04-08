@@ -1,20 +1,24 @@
-// firebaseConfig.ts
-import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { initializeApp } from 'firebase/app';
+import { getFirestore } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
+import { getStorage } from 'firebase/storage';
 
-// 🔥 Replace with your Firebase Config (from Firebase Console)
+// Firebase config
 const firebaseConfig = {
   apiKey: "YOUR_FIREBASE_WEB_API_KEY",
-  authDomain: "neomesystem.firebaseapp.com",
-  projectId: "neomesystem",
-  storageBucket: "neomesystem.appspot.com",
-  messagingSenderId: "474612616419",
-  appId: "1:474612616419:web:d7b8909e54ec1aee0409d6",
-  measurementId: "G-Y3704V01ZP",
+  authDomain: "neome-beac7.firebaseapp.com",
+  projectId: "neome-beac7",
+  storageBucket: "neome-beac7.appspot.com", // ✅ Correct bucket format
+  messagingSenderId: "661096119075",
+  appId: "1:661096119075:web:1904d314ad5648c0936a96",
+  measurementId: "G-69RDXYTCW9"
 };
 
-// Initialize Firebase
+// Initialize Firebase services
 const app = initializeApp(firebaseConfig);
+const db = getFirestore(app); // ✅ Official Firestore reference
+const storage = getStorage(app);
 const auth = getAuth(app);
 
-export { auth };
+// Export everything
+export { app, db, storage, auth };
