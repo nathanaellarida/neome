@@ -336,10 +336,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     fontSize: 14,
     marginBottom: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 2,
   },
   dialogButton: {
     backgroundColor: '#fff',
