@@ -14,7 +14,10 @@ export default function Layout() {
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
-      <Stack screenOptions={{ headerShown: false }}>
+      <Stack screenOptions={{ 
+        headerShown: false,
+        animation: 'fade'
+        }}>
         <Stack.Screen name="index" />
       </Stack>
     </SafeAreaView>
