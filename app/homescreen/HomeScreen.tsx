@@ -180,9 +180,9 @@ export default function HomeScreen() {
           <View style={styles.categoriesContainer}>
             {[
               { title: 'Physical\nActivities', image: require('../assets/images/physicalacts.png'), screen: '/physical_activities/workoutPlans' },
-              { title: 'Mental\nActivities', image: require('../assets/images/mentalacts.png'), screen: '/categories/MentalActivities' },
+              { title: 'Mental\nActivities', image: require('../assets/images/mentalacts.png'), screen: '/mental_activities/MentalActivities' },
               { title: 'Social\nActivities', image: require('../assets/images/socialacts.png'), screen: '/categories/SocialActivities' },
-              { title: 'Emotional\nActivities', image: require('../assets/images/emotionalacts.png'), screen: '/categories/EmotionalActivities' },
+              { title: 'Emotional\nActivities', image: require('../assets/images/emotionalacts.png'), screen: '/emotional_activities/EmotionalActivities' },
             ].map((category, index) => (
               <TouchableOpacity 
                 key={index} 
