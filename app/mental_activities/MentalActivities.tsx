@@ -1,72 +1,60 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  Dimensions,
   Image,
   Modal,
   TextInput,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useFolderContext } from './FolderContext';
+import { useTaskContext } from './TaskContext'; // ✅ Use global task context
 
 const { width } = Dimensions.get('window');
 
-const initialFolders = [
-  { title: 'Daily Tasks', tasks: 2, image: require('../assets/images/folder1.png') },
-  { title: 'School Activities', tasks: 3, image: require('../assets/images/folder2.png') },
-  { title: 'Hydration Goals', tasks: 1, image: require('../assets/images/folder3.png') },
-  { title: 'Outdoor Fun', tasks: 3, image: require('../assets/images/folder4.png') },
-  { title: 'Indoor Activities', tasks: 2, image: require('../assets/images/folder2.png') },
-];
-
-const tasks = [
-  {
-    title: 'Walk 10,000 steps',
-    date: 'Today, November 3, 2024',
-    time: '7:00 PM',
-    image: require('../assets/images/task1.png'),
-    bgColor: '#A6C6FF',
-  },
-  {
-    title: '45-minute cardio',
-    date: 'Today, November 3, 2024',
-    time: '7:00 PM',
-    image: require('../assets/images/task2.png'),
-    bgColor: '#FBC7D4',
-  },
-  {
-    title: 'Drink 2 liters of water',
-    date: 'Today, November 3, 2024',
-    time: '7:00 PM',
-    image: require('../assets/images/task3.png'),
-    bgColor: '#8BE4A4',
-  },
-];
-
 export default function MentalActivities() {
-  const [folders, setFolders] = useState(initialFolders);
+  const todayDate = `${new Date().getFullYear()}-${(new Date().getMonth() + 1)
+    .toString()
+    .padStart(2, '0')}-${new Date().getDate().toString().padStart(2, '0')}`;  
+  const { folders, addFolder } = useFolderContext();
+  const { tasks, markTaskAsDone } = useTaskContext(); // ✅ include markTaskAsDone
+
   const [folderName, setFolderName] = useState('');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
 
+  const todaysTasks = useMemo(
+    () => tasks.filter(task => task.date === todayDate),
+    [tasks, todayDate]
+  );
+
   const handleCreateFolder = () => {
     if (folderName.trim() === '') return;
-
-    setFolders(prev => [
-      ...prev,
-      {
-        title: folderName,
-        tasks: 0,
-        image: require('../assets/images/folder1.png'),
-      },
-    ]);
+    const newFolder = {
+      title: folderName.trim(),
+      tasks: 0,
+      image: require('../assets/images/folder1.png'),
+    };
+    addFolder(newFolder);
     setShowCreateDialog(false);
     setShowSuccessDialog(true);
     setFolderName('');
+  };
+
+  const handleFolderPress = (folderTitle: string) => {
+    const folderTasks = tasks.filter(task => task.folder === folderTitle);
+    router.push({
+      pathname: '/mental_activities/FolderDetailsScreen',
+      params: {
+        folderTitle,
+        folderTasks: JSON.stringify(folderTasks),
+      },
+    });
   };
 
   return (
@@ -83,9 +71,8 @@ export default function MentalActivities() {
         </View>
       </View>
 
-      {/* Scrollable Body */}
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Folders */}
+        {/* Folder Section */}
         <View style={styles.folderHeader}>
           <Text style={styles.folderTitle}>Your Folders ({folders.length})</Text>
           <TouchableOpacity onPress={() => setShowCreateDialog(true)}>
@@ -94,75 +81,109 @@ export default function MentalActivities() {
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.folderScroll}>
-          {folders.map((folder, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.folderCard,
-                index === folders.length - 1 && { marginRight: 40 },
-              ]}
-            >
-              <Text style={styles.folderName}>{folder.title}</Text>
-              <Text style={styles.folderTasks}>{folder.tasks} Tasks</Text>
-              <Image source={folder.image} style={styles.folderImage} />
-            </TouchableOpacity>
-          ))}
+          {folders.map((folder, index) => {
+            const taskCount = tasks.filter(task => task.folder === folder.title).length;
+            return (
+              <TouchableOpacity
+                key={index}
+                style={[styles.folderCard, index === folders.length - 1 && { marginRight: 40 }]}
+                onPress={() => handleFolderPress(folder.title)}
+              >
+                <Text style={styles.folderName}>{folder.title}</Text>
+                <Text style={styles.folderTasks}>{taskCount} Tasks</Text>
+                <Image source={folder.image} style={styles.folderImage} />
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
 
-        {/* Tasks */}
+        {/* Today's Tasks Section */}
         <View style={styles.tasksHeader}>
-          <Text style={styles.taskTitle}>Today's Tasks ({tasks.length})</Text>
+          <Text style={styles.taskTitle}>Today's Tasks ({todaysTasks.length})</Text>
           <View style={{ flexDirection: 'column', gap: 2 }}>
-            <TouchableOpacity>
+            <TouchableOpacity
+              onPress={() =>
+                router.push({ pathname: '/mental_activities/AllTasksScreen' })
+              }
+            >
               <Text style={styles.link}>See All Tasks</Text>
             </TouchableOpacity>
-            <TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push('/mental_activities/CompletedTasksScreen')}>
               <Text style={styles.link}>View Completed tasks</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {tasks.map((task, index) => (
+        {todaysTasks.map((task, index) => (
           <View key={index} style={[styles.taskCard, { backgroundColor: task.bgColor }]}>
             <Image source={task.image} style={styles.taskImage} />
             <View>
               <Text style={styles.taskText}>{task.title}</Text>
-              <Text style={styles.taskSub}>{task.date}</Text>
-              <Text style={styles.taskSub}>{task.time}</Text>
+              {task.description !== '' && (
+                <Text style={styles.taskDescription}>{task.description}</Text>
+              )}
             </View>
-            <TouchableOpacity style={styles.editButton}>
-              <Text style={styles.editText}>Edit</Text>
-            </TouchableOpacity>
+            <Text style={styles.taskDateTime}>
+              {new Date(task.date).toLocaleDateString(undefined, {
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric',
+              })}{'  '}
+              {task.time}
+            </Text>
+            <View style={styles.taskActions}>
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={() =>
+                  router.push({
+                    pathname: '/mental_activities/EditTask',
+                    params: {
+                      title: task.title,
+                      description: task.description,
+                      date: task.date,
+                      time: task.time,
+                      folder: task.folder,
+                      taskIndex: index.toString(),
+                    },
+                  })
+                }
+              >
+                <Text style={styles.editText}>Edit</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.doneButton}
+                onPress={() => markTaskAsDone(tasks.findIndex(t => t === task))}
+              >
+                <Text style={styles.doneText}>Done</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         ))}
       </ScrollView>
 
       {/* Create Folder Dialog */}
       <Modal visible={showCreateDialog} transparent animationType="fade">
-      <View style={styles.dialogOverlay}>
-        <View style={styles.dialogBox}>
-          {/* Close Button */}
-          <TouchableOpacity
-            style={styles.dialogCloseButton}
-            onPress={() => setShowCreateDialog(false)}
-          >
-            <Ionicons name="close" size={20} color="#6549FE" />
-          </TouchableOpacity>
-
-          <Text style={styles.dialogTitle}>Folder name</Text>
-          <TextInput
-            value={folderName}
-            onChangeText={setFolderName}
-            placeholder="Enter folder name"
-            style={styles.dialogInput}
-            placeholderTextColor="#6549FE"
-          />
-          <TouchableOpacity style={styles.dialogButton} onPress={handleCreateFolder}>
-            <Text style={styles.dialogButtonText}>Create</Text>
-          </TouchableOpacity>
+        <View style={styles.dialogOverlay}>
+          <View style={styles.dialogBox}>
+            <TouchableOpacity style={styles.dialogCloseButton} onPress={() => setShowCreateDialog(false)}>
+              <Ionicons name="close" size={20} color="#6549FE" />
+            </TouchableOpacity>
+            <Text style={styles.dialogTitle}>New Folder</Text>
+            <TextInput
+              value={folderName}
+              onChangeText={setFolderName}
+              placeholder="Enter folder name"
+              style={styles.dialogInput}
+              placeholderTextColor="#AEAEAE"
+            />
+            <TouchableOpacity style={styles.dialogButton} onPress={handleCreateFolder}>
+              <Text style={styles.dialogButtonText}>Create</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-    </Modal>
+      </Modal>
 
       {/* Success Dialog */}
       <Modal visible={showSuccessDialog} transparent animationType="fade">
@@ -172,39 +193,32 @@ export default function MentalActivities() {
               Folder{'\n'}<Text style={{ fontWeight: 'bold' }}>Successfully Created!</Text>
             </Text>
             <Text style={styles.dialogSub}>Start adding tasks to this folder.</Text>
-            <Ionicons name="checkmark-circle-outline" size={80} color="green" />
+            <Ionicons name="checkmark-circle-outline" size={100} color="#00BB16" />
             <TouchableOpacity style={styles.dialogButton} onPress={() => setShowSuccessDialog(false)}>
               <Text style={styles.dialogButtonText}>Close</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
-
-      {/* Bottom Navigation Bar */}
-        <View style={styles.bottomNav}>
-            <TouchableOpacity style={styles.navButton}>
-            <Ionicons name="home-outline" size={25} color="#6549FE" />
-            </TouchableOpacity>
-    
-            {/* Increased spacing for Statistics */}
-            <TouchableOpacity style={[styles.navButton, { marginRight: 30 }]}>
-            <Ionicons name="bar-chart-outline" size={25} color="#6549FE" />
-            </TouchableOpacity>
-    
-            {/* Center Profile Button */}
-            <TouchableOpacity style={styles.centerCircle}>
-            <Ionicons name="person" size={32} color="#FFFFFF" />
-            </TouchableOpacity>
-    
-            {/* Increased spacing for Calendar */}
-            <TouchableOpacity style={[styles.navButton, { marginLeft: 30 }]}>
-            <Ionicons name="calendar-outline" size={25} color="#6549FE" />
-            </TouchableOpacity>
-    
-            <TouchableOpacity style={styles.navButton}>
-            <Ionicons name="chatbubble-ellipses-outline" size={25} color="#6549FE" />
-            </TouchableOpacity>
-        </View>
+      
+      {/* Bottom Nav */}
+      <View style={styles.bottomNav}>
+        <TouchableOpacity style={styles.navButton}>
+          <Ionicons name="home-outline" size={25} color="#6549FE" />
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.navButton, { marginRight: 30 }]}>
+          <Ionicons name="bar-chart-outline" size={25} color="#6549FE" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.centerCircle}>
+          <Ionicons name="person" size={32} color="#FFFFFF" />
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.navButton, { marginLeft: 30 }]}>
+          <Ionicons name="calendar-outline" size={25} color="#6549FE" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navButton}>
+          <Ionicons name="chatbubble-ellipses-outline" size={25} color="#6549FE" />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -232,6 +246,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#44349B', marginRight: 130 },
   iconGroup: { flexDirection: 'row', alignItems: 'center' },
+
   folderHeader: {
     marginTop: 20,
     marginHorizontal: 20,
@@ -276,6 +291,7 @@ const styles = StyleSheet.create({
   },
   taskTitle: { fontSize: 16, fontWeight: 'bold', color: '#44349B' },
   link: { fontSize: 12, color: '#6549FE' },
+
   taskCard: {
     borderRadius: 20,
     height: 175,
@@ -287,17 +303,39 @@ const styles = StyleSheet.create({
   },
   taskText: { fontSize: 18, fontWeight: 'bold', color: 'white' },
   taskSub: { fontSize: 12, color: 'white', marginTop: 2 },
-  editButton: {
+  taskActions: {
     position: 'absolute',
     top: 15,
     right: 20,
+    flexDirection: 'column',
+    gap: 5,
+    zIndex: 1,
+  },
+  editButton: {
     backgroundColor: 'white',
-    paddingVertical: 4,
-    paddingHorizontal: 12,
+    paddingVertical: 2,
+    borderRadius: 20,
+    marginBottom: 5,
+    width: 56,
+  },
+  doneButton: {
+    backgroundColor: 'white',
+    paddingVertical: 2,
     borderRadius: 20,
     width: 56,
   },
-  editText: { fontSize: 12, color: '#6549FE', fontWeight: 'bold', alignSelf: 'center' },
+  editText: {
+    fontSize: 12,
+    color: '#6549FE',
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  doneText: {
+    fontSize: 12,
+    color: '#6549FE',
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },  
   taskImage: {
     width: '150%',
     height: '140%',
@@ -305,6 +343,7 @@ const styles = StyleSheet.create({
     resizeMode: 'stretch',
     right: 0,
   },
+
   dialogOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.35)',
@@ -312,7 +351,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dialogBox: {
-    width: '80%',
+    width: '70%',
     backgroundColor: '#fff',
     borderRadius: 30,
     padding: 25,
@@ -327,6 +366,7 @@ const styles = StyleSheet.create({
     color: '#44349B',
     fontWeight: 'bold',
     marginBottom: 15,
+    marginTop: 10,
   },
   dialogInput: {
     width: '100%',
@@ -335,7 +375,8 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     paddingHorizontal: 20,
     fontSize: 14,
-    marginBottom: 20,
+    marginBottom: 10,
+    marginTop: 10,
   },
   dialogButton: {
     backgroundColor: '#fff',
@@ -346,6 +387,7 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     height: 35,
     textAlign: 'center',
+    marginTop: 20,
   },
   dialogButtonText: {
     color: '#6549FE',
@@ -357,6 +399,12 @@ const styles = StyleSheet.create({
     color: '#999',
     marginBottom: 15,
     textAlign: 'center',
+  },
+  dialogCloseButton: {
+    position: 'absolute',
+    top: 15,
+    right: 15,
+    zIndex: 1,
   },
   bottomNav: {
     width: width,
@@ -397,10 +445,31 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 6,
   },
-  dialogCloseButton: {
+  taskDescription: {
+    fontSize: 14,
+    color: 'white',
+    marginTop: 5,
+    marginBottom: 8,
+    paddingRight: 40,
+  },
+  taskDateTime: {
+    fontSize: 12,
+    color: 'white',
     position: 'absolute',
-    top: 15,
-    right: 15,
-    zIndex: 1,
+    bottom: 15,
+    left: 20,
   },  
+  doneButton: {
+    backgroundColor: 'white',
+    paddingVertical: 2,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    width: 56,
+  },
+  doneText: {
+    fontSize: 12,
+    color: '#6549FE',
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
 });
