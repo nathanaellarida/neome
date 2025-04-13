@@ -187,8 +187,7 @@ export default function HomeScreen() {
               <TouchableOpacity 
                 key={index} 
                 style={styles.categoryButton} 
-                onPress={() => router.push(category.screen as any)} // ✅ Navigate to category screen
-              >
+                onPress={() => router.push('/Challenges/ChallengeDashboard')}>
                 <Image source={category.image} style={styles.categoryImage} />
                 <View style={styles.categoryTextContainer}>
                   <Text style={styles.categoryText}>{category.title}</Text>
@@ -411,7 +410,7 @@ export default function HomeScreen() {
           <Ionicons name="calendar-outline" size={25} color="#6549FE" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navButton}>
+        <TouchableOpacity style={styles.navButton} onPress={() => router.push('/messaging/MessageHome')}>
           <Ionicons name="chatbubble-ellipses-outline" size={25} color="#6549FE" />
         </TouchableOpacity>
       </View>
