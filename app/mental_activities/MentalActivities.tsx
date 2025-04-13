@@ -459,17 +459,4 @@ const styles = StyleSheet.create({
     bottom: 15,
     left: 20,
   },  
-  doneButton: {
-    backgroundColor: 'white',
-    paddingVertical: 2,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    width: 56,
-  },
-  doneText: {
-    fontSize: 12,
-    color: '#6549FE',
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
 });
