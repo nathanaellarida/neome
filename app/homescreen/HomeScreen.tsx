@@ -934,13 +934,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 2,
-    
-    // Make it stay at the right
     position: 'absolute', 
-    right: 20, // Distance from the right edge
+    right: 20,
   },
-
-
-  //CHALLENGE CONTAINERS ETC.
-
 });
