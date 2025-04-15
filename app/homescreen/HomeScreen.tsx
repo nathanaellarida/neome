@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 // Make sure to import from expo-svg if using Expo
 import Svg, { Circle } from 'react-native-svg';
 import { router } from 'expo-router';
+import { WebView } from 'react-native-webview';
 
 export default function HomeScreen() {
   const today = new Date();
@@ -11,6 +12,8 @@ export default function HomeScreen() {
   const currentMonthYear = today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  const avatarModel = 'femaleBody5.glb';
   
   // Progress Circle Config
   const size = 150;
@@ -71,33 +74,142 @@ export default function HomeScreen() {
         </View>
 
         {/* Your Avatar Section */}
-        <Text style={styles.sectionTitle}>Your Avatar</Text>
-        <View style={styles.mainContainer}>
-          <View style={styles.statsContainer}>
-            {[
-              { value: '3,502', label: 'Points', image: require('../assets/images/points.png') },
-              { value: '1,350', label: 'Calories', image: require('../assets/images/calories.png') },
-              { value: '300', label: 'Energy', image: require('../assets/images/energy.png') },
-              { value: '25', label: 'Badges', image: require('../assets/images/badges.png') },
-              { value: '2,532', label: 'Steps', image: require('../assets/images/steps.png') },
-            ].map((item, index) => (
-              <View key={index} style={styles.statBox}>
-                 {/* Different image for each stat */}
-                  <Image source={item.image} style={styles.statIcon} />
-                {/* Texts aligned to the right */}
-                <View style={styles.textWrapper}>
-                  <Text style={styles.statNumber}>{item.value}</Text>
-                  <Text style={styles.statLabel}>{item.label}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
-
-          {/* Placeholder Right Side */}
-          <View style={styles.avatarPlaceholder}>
-          <Image source={require('../assets/images/avatar.png')} style={styles.avatarImage} />
-          </View>
+<Text style={styles.sectionTitle}>Your Avatar</Text>
+<View style={styles.mainContainer}>
+  {/* Left: Stats */}
+  <View style={styles.statsContainer}>
+    {[
+      { value: '3,502', label: 'Points', image: require('../assets/images/points.png') },
+      { value: '1,350', label: 'Calories', image: require('../assets/images/calories.png') },
+      { value: '300', label: 'Energy', image: require('../assets/images/energy.png') },
+      { value: '25', label: 'Badges', image: require('../assets/images/badges.png') },
+      { value: '2,532', label: 'Steps', image: require('../assets/images/steps.png') },
+    ].map((item, index) => (
+      <View key={index} style={styles.statBox}>
+        <Image source={item.image} style={styles.statIcon} />
+        <View style={styles.textWrapper}>
+          <Text style={styles.statNumber}>{item.value}</Text>
+          <Text style={styles.statLabel}>{item.label}</Text>
         </View>
+      </View>
+    ))}
+  </View>
+
+  {/* Right: Avatar 3D WebView */}
+  <WebView
+    originWhitelist={['https://*']}
+    javaScriptEnabled
+    domStorageEnabled
+    allowsFullscreenVideo
+    mediaPlaybackRequiresUserAction={false}
+    source={{
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+            <script type="module" src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.module.js"></script>
+            <script type="module" src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/jsm/loaders/GLTFLoader.js"></script>
+            <style>
+              html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #fff; }
+              model-viewer { width: 100%; height: 100%; }
+            </style>
+          </head>
+          <body>
+            <model-viewer 
+              id="avatar"
+              src="https://raw.githubusercontent.com/VIRGINIAMW123/female-avatar-models/main/${avatarModel}"
+              alt="3D Avatar"
+              camera-controls
+              autoplay
+              environment-image="neutral"
+              shadow-intensity="1"
+              exposure="1"
+              auto-rotate
+              camera-orbit="0deg 90deg 2.5m">
+            </model-viewer>
+
+            <script type="module">
+              import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.module.js';
+              import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.132.2/examples/jsm/loaders/GLTFLoader.js';
+
+              const modelViewer = document.querySelector('#avatar');
+              let mixer, clock;
+
+              modelViewer.addEventListener('load', async () => {
+                const modelUrl = modelViewer.getAttribute('src');
+                const loader = new GLTFLoader();
+                
+                loader.load(modelUrl, (gltf) => {
+                  const scene = gltf.scene;
+                  const animations = gltf.animations;
+                  
+                  if (animations && animations.length > 0) {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = window.innerWidth;
+                    canvas.height = window.innerHeight;
+                    canvas.style.position = 'absolute';
+                    canvas.style.top = '0';
+                    canvas.style.left = '0';
+                    canvas.style.pointerEvents = 'none';
+                    document.body.appendChild(canvas);
+                    
+                    const renderer = new THREE.WebGLRenderer({ 
+                      canvas, 
+                      alpha: true,
+                      antialias: true
+                    });
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                    
+                    const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+                    camera.position.z = 2;
+
+                    const threeScene = new THREE.Scene();
+                    threeScene.add(scene);
+
+                    mixer = new THREE.AnimationMixer(scene);
+                    let targetClip = animations.find(clip => clip.name === targetAnimation);
+                    if (!targetClip && animations.length > 0) {
+                      targetClip = animations[0];
+                    }
+
+                    if (targetClip) {
+                      const action = mixer.clipAction(targetClip);
+                      action.play();
+                    }
+
+                    clock = new THREE.Clock();
+
+                    function animate() {
+                      requestAnimationFrame(animate);
+                      if (mixer) {
+                        const delta = clock.getDelta();
+                        mixer.update(delta);
+                      }
+                      renderer.render(threeScene, camera);
+                    }
+
+                    animate();
+
+                    window.addEventListener('resize', () => {
+                      camera.aspect = window.innerWidth / window.innerHeight;
+                      camera.updateProjectionMatrix();
+                      renderer.setSize(window.innerWidth, window.innerHeight);
+                    });
+                  }
+                });
+              });
+            </script>
+          </body>
+        </html>
+      `,
+    }}
+    style={styles.avatarPlaceholder}
+  />
+</View>
+
 
         <Text style={styles.sectionTitle}>Daily Progress</Text>
           <ScrollView
@@ -181,14 +293,13 @@ export default function HomeScreen() {
             {[
               { title: 'Physical\nActivities', image: require('../assets/images/physicalacts.png'), screen: '/physical_activities/workoutPlans' },
               { title: 'Mental\nActivities', image: require('../assets/images/mentalacts.png'), screen: '/mental_activities/MentalActivities' },
-              { title: 'Social\nActivities', image: require('../assets/images/socialacts.png'), screen: '/categories/SocialActivities' },
+              { title: 'Social\nActivities', image: require('../assets/images/socialacts.png'), screen: '/Challenges/ChallengeDashboard' },
               { title: 'Emotional\nActivities', image: require('../assets/images/emotionalacts.png'), screen: '/emotional_activities/EmotionalActivities' },
             ].map((category, index) => (
               <TouchableOpacity 
                 key={index} 
                 style={styles.categoryButton} 
-                onPress={() => router.push(category.screen as any)} // ✅ Navigate to category screen
-              >
+                onPress={() => router.push(category.screen as any)}>
                 <Image source={category.image} style={styles.categoryImage} />
                 <View style={styles.categoryTextContainer}>
                   <Text style={styles.categoryText}>{category.title}</Text>
@@ -411,7 +522,7 @@ export default function HomeScreen() {
           <Ionicons name="calendar-outline" size={25} color="#6549FE" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navButton}>
+        <TouchableOpacity style={styles.navButton} onPress={() => router.push('/messaging/MessageHome')}>
           <Ionicons name="chatbubble-ellipses-outline" size={25} color="#6549FE" />
         </TouchableOpacity>
       </View>
@@ -616,12 +727,11 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   avatarPlaceholder: {
-    width: '50%',
-    height: 350,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 15,
-    justifyContent: 'center',  
-    alignItems: 'flex-end',   
+    width: '100%',
+    height: 300,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#f5f5f5',
   },
   
   avatarImage: {
