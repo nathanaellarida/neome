@@ -293,13 +293,13 @@ export default function HomeScreen() {
             {[
               { title: 'Physical\nActivities', image: require('../assets/images/physicalacts.png'), screen: '/physical_activities/workoutPlans' },
               { title: 'Mental\nActivities', image: require('../assets/images/mentalacts.png'), screen: '/mental_activities/MentalActivities' },
-              { title: 'Social\nActivities', image: require('../assets/images/socialacts.png'), screen: '/categories/SocialActivities' },
+              { title: 'Social\nActivities', image: require('../assets/images/socialacts.png'), screen: '/Challenges/ChallengeDashboard' },
               { title: 'Emotional\nActivities', image: require('../assets/images/emotionalacts.png'), screen: '/emotional_activities/EmotionalActivities' },
             ].map((category, index) => (
               <TouchableOpacity 
                 key={index} 
                 style={styles.categoryButton} 
-                onPress={() => router.push('/Challenges/ChallengeDashboard')}>
+                onPress={() => router.push(category.screen as any)}>
                 <Image source={category.image} style={styles.categoryImage} />
                 <View style={styles.categoryTextContainer}>
                   <Text style={styles.categoryText}>{category.title}</Text>
