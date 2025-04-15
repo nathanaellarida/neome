@@ -12,8 +12,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useFolderContext } from './FolderContext';
-import { useTaskContext } from './TaskContext'; // ✅ Use global task context
+import { useFolderContext } from '../../contexts/FolderContext';
+import { useTaskContext } from '../../contexts/TaskContext'; // ✅ Use global task context
 
 const { width } = Dimensions.get('window');
 
@@ -459,17 +459,4 @@ const styles = StyleSheet.create({
     bottom: 15,
     left: 20,
   },  
-  doneButton: {
-    backgroundColor: 'white',
-    paddingVertical: 2,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    width: 56,
-  },
-  doneText: {
-    fontSize: 12,
-    color: '#6549FE',
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
 });

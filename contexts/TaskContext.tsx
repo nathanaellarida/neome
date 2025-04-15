@@ -10,13 +10,10 @@ export interface Task {
   folder: string;
 }
 
-// ✅ Get current date in local yyyy-mm-dd format
+// ✅ Get current date in yyyy-mm-dd format
 const getLocalTodayDate = (): string => {
   const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 };
 
 const today = getLocalTodayDate();
@@ -27,7 +24,7 @@ const generateDefaultTasks = (): Task[] => [
     description: 'This is the description for this task. This is the description for this task.',
     date: today,
     time: '7:00 PM',
-    image: require('../assets/images/plaintask1.png'),
+    image: require('../app/assets/images/plaintask1.png'),
     bgColor: '#A6C6FF',
     folder: 'Daily Tasks',
   },
@@ -36,7 +33,7 @@ const generateDefaultTasks = (): Task[] => [
     description: 'This is the description for this task.',
     date: today,
     time: '3:00 PM',
-    image: require('../assets/images/plaintask2.png'),
+    image: require('../app/assets/images/plaintask2.png'),
     bgColor: '#FBC7D4',
     folder: 'Daily Tasks',
   },
@@ -45,7 +42,7 @@ const generateDefaultTasks = (): Task[] => [
     description: 'This is the description for this task. This is the description for this task.',
     date: today,
     time: '2:40 PM',
-    image: require('../assets/images/plaintask3.png'),
+    image: require('../app/assets/images/plaintask3.png'),
     bgColor: '#8BE4A4',
     folder: 'Hydration Goals',
   },
@@ -54,7 +51,7 @@ const generateDefaultTasks = (): Task[] => [
     description: 'This is the description for this task.',
     date: today,
     time: '9:05 AM',
-    image: require('../assets/images/plaintask4.png'),
+    image: require('../app/assets/images/plaintask4.png'),
     bgColor: '#A2E6F4',
     folder: 'Outdoor Fun',
   },
@@ -63,7 +60,7 @@ const generateDefaultTasks = (): Task[] => [
     description: 'This is the description for this task. This is the description for this task.',
     date: today,
     time: '11:30 AM',
-    image: require('../assets/images/plaintask5.png'),
+    image: require('../app/assets/images/plaintask5.png'),
     bgColor: '#FFD96A',
     folder: 'Indoor Activities',
   },
@@ -77,7 +74,7 @@ type TaskContextType = {
   markTaskAsDone: (index: number) => void;
 };
 
-const TaskContext = createContext<TaskContextType | undefined>(undefined);
+const TaskContext = createContext<TaskContextType | null>(null);
 
 export const TaskProvider = ({ children }: { children: ReactNode }) => {
   const [tasks, setTasks] = useState<Task[]>(generateDefaultTasks());
@@ -107,10 +104,12 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-export const useTaskContext = () => {
+// Custom hook to access task context safely
+export const useTaskContext = (): TaskContextType => {
   const context = useContext(TaskContext);
   if (!context) {
     throw new Error('useTaskContext must be used within a TaskProvider');
   }
   return context;
 };
+
