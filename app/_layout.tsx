@@ -1,12 +1,9 @@
 import { Stack, Slot } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-<<<<<<< HEAD
 import { FolderProvider } from './mental_activities/FolderContext';
 import { TaskProvider } from './mental_activities/TaskContext'; // ✅ ensure correct import
-=======
 import { useEffect } from 'react';
 import { useRouter } from 'expo-router';
->>>>>>> main
 
 export default function Layout() {
   const router = useRouter();
@@ -14,24 +11,14 @@ export default function Layout() {
   // Use useEffect to navigate after the component is mounted
   useEffect(() => {
     // Change this path to the screen you're working on
-    router.replace('/loginpage/login');
+    router.replace('./app/index');
   }, []);
 
   return (
-<<<<<<< HEAD
-    <FolderProvider>
-      <TaskProvider>
-        <SafeAreaView style={{ flex: 1 }}>
-          <Stack screenOptions={{ headerShown: false }} />
-        </SafeAreaView>
-      </TaskProvider>
-    </FolderProvider>
-=======
     <SafeAreaView style={{ flex: 1 }}>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
       </Stack>
     </SafeAreaView>
->>>>>>> main
   );
 }
