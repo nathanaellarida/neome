@@ -12,7 +12,7 @@ import {
   Platform,
   Alert,
 } from "react-native";
-import { router } from "expo-router";
+import { useRouter } from "expo-router";
 import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
 import { auth } from "../../firebaseConfig";
 
@@ -29,6 +29,8 @@ const BACK_ICON = require("../assets/images/leftBack.png");
 const { width, height } = Dimensions.get("window");
 
 export default function Login() {
+  const router = useRouter(); // ✅ instantiate the router from context
+
   const [form, setForm] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
 

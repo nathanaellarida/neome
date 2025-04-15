@@ -395,7 +395,7 @@ export default function CreateNewChallenge() {
               style={styles.successSecondaryBtn}
               onPress={() => {
                 setShowSuccessModal(false);
-                router.push('/');
+                router.push('/Challenges/ChallengeDashboard');
               }}              
             >
               <Text style={styles.successSecondaryText}>Back</Text>

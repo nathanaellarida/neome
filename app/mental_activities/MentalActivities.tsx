@@ -12,8 +12,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useFolderContext } from './FolderContext';
-import { useTaskContext } from './TaskContext'; // ✅ Use global task context
+import { useFolderContext } from '../../contexts/FolderContext';
+import { useTaskContext } from '../../contexts/TaskContext'; // ✅ Use global task context
 
 const { width } = Dimensions.get('window');
 

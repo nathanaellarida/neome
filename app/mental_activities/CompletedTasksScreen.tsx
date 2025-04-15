@@ -3,7 +3,7 @@ import {
   View, Text, ScrollView, StyleSheet, Image, TouchableOpacity, Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTaskContext } from './TaskContext';
+import { useTaskContext } from '../../contexts/TaskContext';
 import { router } from 'expo-router';
 
 const { width } = Dimensions.get('window');

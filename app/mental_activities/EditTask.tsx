@@ -6,8 +6,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useLocalSearchParams, router } from 'expo-router';
-import { useTaskContext } from './TaskContext';
-import { useFolderContext } from './FolderContext';
+import { useTaskContext } from '../../contexts/TaskContext';
+import { useFolderContext } from '../../contexts/FolderContext';
 
 const { width } = Dimensions.get('window');
 
