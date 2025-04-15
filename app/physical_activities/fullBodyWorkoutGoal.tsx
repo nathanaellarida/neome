@@ -1,3 +1,5 @@
+//MAKE THE COLOR OF CIRCLE DYNAMIC
+
 import React, { useRef } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Image, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -134,7 +136,7 @@ export default function FullBodyWorkoutGoal() {
         </View>
 
       {/* START BUTTON - Fixed at the Bottom */}
-      <TouchableOpacity style={styles.fixedStartButton} onPress={() => router.push('/physical_activities/FullBodyWorkout')}>
+      <TouchableOpacity style={styles.fixedStartButton} onPress={() => router.push('/physical_activities/fullBodyWorkout')}>
         <Text style={styles.startButtonText}>START</Text>
       </TouchableOpacity>
     </View>

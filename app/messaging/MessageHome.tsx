@@ -60,7 +60,7 @@ const MessageHome: React.FC = () => {
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tabButton, activeTab === 'Challenges' && styles.activeTab]}
-          onPress={() => setActiveTab('Challenges')}>
+          onPress={() => router.push("/Challenges/ChallengeDashboard")}>
           <Text style={[styles.tabText, activeTab === 'Challenges' && styles.activeTabText]}>Challenges</Text>
         </TouchableOpacity>
       </View>
