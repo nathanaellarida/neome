@@ -1,6 +1,23 @@
 import React, { useEffect, useState } from "react";
-import { View, Image, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, Alert } from "react-native";
-import { collection, query, where, onSnapshot, getDoc, doc, getDocs } from "firebase/firestore";
+import {
+  View,
+  Image,
+  StyleSheet,
+  FlatList,
+  ActivityIndicator,
+  TouchableOpacity,
+  Alert,
+} from "react-native";
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  getDoc,
+  doc,
+  getDocs,
+  Query,
+} from "firebase/firestore";
 import { getDownloadURL, ref } from "firebase/storage";
 import { db, storage } from "../firebaseConfig";
 import { useRouter } from "expo-router";
@@ -18,7 +35,7 @@ const ActiveAvatarList = () => {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  const currentUserId = '835YwhuoxRfs7y1g2DIQ';
+  const currentUserId = "835YwhuoxRfs7y1g2DIQ";
 
   useEffect(() => {
     const fetchFriends = async () => {
@@ -32,7 +49,7 @@ const ActiveAvatarList = () => {
         }
 
         const userData = userDoc.data();
-        const friendIds = userData.friends || [];
+        let friendIds: string[] = userData.friends || [];
 
         if (friendIds.length === 0) {
           setFriends([]);
@@ -40,39 +57,56 @@ const ActiveAvatarList = () => {
           return;
         }
 
-        const friendsQuery = query(collection(db, "users"), where("__name__", "in", friendIds));
-        const unsubscribe = onSnapshot(friendsQuery, async (snapshot) => {
-          const friendsData: Friend[] = await Promise.all(snapshot.docs.map(async (doc) => {
-            const data = doc.data();
-            let avatarUrl = "";
-            if (data.avatar) {
-              try {
-                const avatarRef = ref(storage, data.avatar);
-                avatarUrl = await getDownloadURL(avatarRef);
-              } catch (error) {
-                console.warn("Failed to get avatar URL:", error);
-              }
-            }
+        const batchSize = 10;
+        const allFriends: Friend[] = [];
+        const unsubscribeFns: (() => void)[] = [];
 
-            return {
-              id: doc.id,
-              name: data.name || "Unknown",
-              avatarUrl,
-              avatarPath: data.avatar || "",
-              online: data.online || false,
-            };
-          }));
+        while (friendIds.length > 0) {
+          const batch = friendIds.splice(0, batchSize);
+          const friendsQuery: Query = query(
+            collection(db, "users"),
+            where("__name__", "in", batch)
+          );
 
-          const sortedFriends = friendsData.sort((a, b) => {
-            if (a.online !== b.online) return a.online ? -1 : 1;
-            return a.name.localeCompare(b.name);
+          const unsubscribe = onSnapshot(friendsQuery, async (snapshot) => {
+            const friendsData: Friend[] = await Promise.all(
+              snapshot.docs.map(async (docSnap) => {
+                const data = docSnap.data();
+                let avatarUrl = "";
+                if (data.avatar) {
+                  try {
+                    const avatarRef = ref(storage, data.avatar);
+                    avatarUrl = await getDownloadURL(avatarRef);
+                  } catch (error) {
+                    console.warn("Failed to get avatar URL:", error);
+                  }
+                }
+
+                return {
+                  id: docSnap.id,
+                  name: data.name || "Unknown",
+                  avatarUrl,
+                  avatarPath: data.avatar || "",
+                  online: data.online || false,
+                };
+              })
+            );
+
+            allFriends.push(...friendsData);
+
+            const sorted = allFriends.sort((a, b) => {
+              if (a.online !== b.online) return a.online ? -1 : 1;
+              return a.name.localeCompare(b.name);
+            });
+
+            setFriends(sorted);
+            setLoading(false);
           });
 
-          setFriends(sortedFriends);
-          setLoading(false);
-        });
+          unsubscribeFns.push(unsubscribe);
+        }
 
-        return () => unsubscribe();
+        return () => unsubscribeFns.forEach((fn) => fn());
       } catch (error) {
         console.error("Error fetching friends:", error);
         setLoading(false);
@@ -105,24 +139,23 @@ const ActiveAvatarList = () => {
         );
 
         const chatsSnapshot = await getDocs(chatsQuery);
-
-        chatsSnapshot.forEach(doc => {
-          const chatData = doc.data();
+        chatsSnapshot.forEach((docSnap) => {
+          const chatData = docSnap.data();
           if (chatData.users && chatData.users.includes(friend.id)) {
-            existingChatId = doc.id;
+            existingChatId = docSnap.id;
           }
         });
       }
 
       router.push({
-        pathname: '/messaging/ChatScreen',
+        pathname: "/messaging/ChatScreen",
         params: {
           chatId: existingChatId,
           receiverId: friend.id,
           receiverName: friend.name,
           receiverAvatar: friend.avatarPath,
           senderId: currentUserId,
-        }
+        },
       } as any);
     } catch (error) {
       console.error("Error handling chat navigation:", error);
