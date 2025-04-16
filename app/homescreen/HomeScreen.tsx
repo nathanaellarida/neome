@@ -513,7 +513,7 @@ export default function HomeScreen() {
         </TouchableOpacity>
 
         {/* Center Profile Button */}
-        <TouchableOpacity style={styles.centerCircle}>
+        <TouchableOpacity style={styles.centerCircle} onPress={() => router.push('/avatar_progress/AvatarProgressScreen')}>
           <Ionicons name="person" size={32} color="#FFFFFF" />
         </TouchableOpacity>
 
