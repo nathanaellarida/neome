@@ -298,10 +298,10 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 15,
     padding: 20,
+    paddingTop: 15,
     position: 'relative',
     overflow: 'hidden',
-  },
-  taskText: { fontSize: 18, fontWeight: 'bold', color: 'white' },
+  }, 
   taskSub: { fontSize: 12, color: 'white', marginTop: 2 },
   taskActions: {
     position: 'absolute',
@@ -311,18 +311,38 @@ const styles = StyleSheet.create({
     gap: 5,
     zIndex: 1,
   },
+  taskDescription: {
+    fontSize: 16,
+    color: 'white',
+    marginTop: 5,
+    marginBottom: 8,
+    paddingRight: 45,
+  },
+  taskDateTime: {
+    fontSize: 16,
+    color: 'white',
+    position: 'absolute',
+    bottom: 15,
+    left: 20,
+  },  
+  taskText: {
+    fontSize: 27.5, // was 18
+    fontWeight: 'bold',
+    color: 'white',
+    paddingEnd: 30,
+  }, 
   editButton: {
     backgroundColor: 'white',
     paddingVertical: 2,
     borderRadius: 20,
     marginBottom: 5,
-    width: 56,
+    width: 45,
   },
   doneButton: {
     backgroundColor: 'white',
     paddingVertical: 2,
     borderRadius: 20,
-    width: 56,
+    width: 45,
   },
   editText: {
     fontSize: 12,
@@ -343,7 +363,6 @@ const styles = StyleSheet.create({
     resizeMode: 'stretch',
     right: 0,
   },
-
   dialogOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.35)',
@@ -445,18 +464,4 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 6,
   },
-  taskDescription: {
-    fontSize: 14,
-    color: 'white',
-    marginTop: 5,
-    marginBottom: 8,
-    paddingRight: 40,
-  },
-  taskDateTime: {
-    fontSize: 12,
-    color: 'white',
-    position: 'absolute',
-    bottom: 15,
-    left: 20,
-  },  
 });
