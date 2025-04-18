@@ -338,7 +338,7 @@ export default function HomeScreen() {
 
           {/* Single Button */}
           <View style={styles.viewButtonContainer}>
-            <TouchableOpacity style={styles.viewButton}>
+            <TouchableOpacity style={styles.viewButton} onPress={() => router.push('../leaderboard/overallLeaderboard')}>
               <Text style={styles.challengeButtonText}>View</Text>
             </TouchableOpacity>
           </View>
