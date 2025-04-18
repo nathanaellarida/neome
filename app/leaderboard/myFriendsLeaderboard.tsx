@@ -134,7 +134,7 @@ export default function LeaderboardScreen() {
                   styles.segmentTab,
                   activeTab === 'overall' && styles.activeSegment,
                 ]}
-                onPress={() => router.push("/leaderboard/overallLeaderboard")}
+                onPress={() => router.push("../leaderboard/overallLeaderboard")}
               >
                 <Text
                   style={[
@@ -151,7 +151,7 @@ export default function LeaderboardScreen() {
                   styles.segmentTab,
                   activeTab === 'friends' && styles.activeSegment,
                 ]}
-                onPress={() => router.push("/leaderboard/myFriendsLeaderboard")}
+                onPress={() => router.push("../leaderboard/myFriendsLeaderboard")}
               >
                 <Text
                   style={[
