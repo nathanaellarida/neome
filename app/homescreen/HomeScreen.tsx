@@ -508,7 +508,10 @@ export default function HomeScreen() {
         </TouchableOpacity>
 
         {/* Increased spacing for Statistics */}
-        <TouchableOpacity style={[styles.navButton, { marginRight: 30 }]}>
+        <TouchableOpacity
+          style={[styles.navButton, { marginRight: 30 }]}
+          onPress={() => router.push('/chatbot/App')}
+        >
           <Ionicons name="bar-chart-outline" size={25} color="#6549FE" />
         </TouchableOpacity>
 

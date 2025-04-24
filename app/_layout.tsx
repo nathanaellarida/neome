@@ -1,12 +1,14 @@
 import { Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FolderProvider } from '../contexts/FolderContext';
-import { TaskProvider } from '../contexts/TaskContext'; // ✅ moved out of app/
+import { TaskProvider } from '../contexts/TaskContext';
 import { useEffect } from 'react';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
+import FloatingChatbot from './chatbot/FloatingChatbot';
 
 export default function Layout() {
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     router.replace('/homescreen/HomeScreen');
@@ -19,7 +21,8 @@ export default function Layout() {
           <Stack screenOptions={{ 
             headerShown: false, 
             animation: 'fade' 
-                }} />
+          }} />
+          {pathname !== '/chatbot/App' && <FloatingChatbot />}
         </SafeAreaView>
       </TaskProvider>
     </FolderProvider>
