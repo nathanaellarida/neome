@@ -338,7 +338,7 @@ export default function HomeScreen() {
 
           {/* Single Button */}
           <View style={styles.viewButtonContainer}>
-            <TouchableOpacity style={styles.viewButton}>
+            <TouchableOpacity style={styles.viewButton} onPress={() => router.push('../leaderboard/overallLeaderboard')}>
               <Text style={styles.challengeButtonText}>View</Text>
             </TouchableOpacity>
           </View>
@@ -508,12 +508,15 @@ export default function HomeScreen() {
         </TouchableOpacity>
 
         {/* Increased spacing for Statistics */}
-        <TouchableOpacity style={[styles.navButton, { marginRight: 30 }]}>
+        <TouchableOpacity
+          style={[styles.navButton, { marginRight: 30 }]}
+          onPress={() => router.push('/chatbot/App')}
+        >
           <Ionicons name="bar-chart-outline" size={25} color="#6549FE" />
         </TouchableOpacity>
 
         {/* Center Profile Button */}
-        <TouchableOpacity style={styles.centerCircle}>
+        <TouchableOpacity style={styles.centerCircle} onPress={() => router.push('/avatar_progress/AvatarProgressScreen')}>
           <Ionicons name="person" size={32} color="#FFFFFF" />
         </TouchableOpacity>
 
@@ -522,7 +525,7 @@ export default function HomeScreen() {
           <Ionicons name="calendar-outline" size={25} color="#6549FE" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navButton} onPress={() => router.push('/messaging/MessageHome')}>
+        <TouchableOpacity style={styles.navButton} onPress={() => router.push('./messaging/MessageHome')}>
           <Ionicons name="chatbubble-ellipses-outline" size={25} color="#6549FE" />
         </TouchableOpacity>
       </View>
