@@ -13,6 +13,7 @@ import { BlurView } from 'expo-blur';
 import { doc, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import PreviewEmojiModal from './PreviewEmojiModal';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 const { width } = Dimensions.get('window');
 
@@ -31,12 +32,13 @@ export const REACTIONS: Reaction[] = [
   { emoji: '👍', name: 'like' }
 ];
 
-// List of options for the message
+// List of options for the message (icon name, text)
 const MESSAGE_OPTIONS = [
-  { text: 'Reply', icon: '↩️' },
-  { text: 'Copy', icon: '📋' },
-  { text: 'Translate', icon: '🌐' },
-  { text: 'More', icon: '⋯' }
+  { text: 'Reply', icon: 'chatbubble-ellipses-outline' },
+  { text: 'Forward', icon: 'arrow-redo-outline' },
+  { text: 'Copy', icon: 'copy-outline' },
+  { text: 'Delete for you', icon: 'trash-outline' },
+  { text: 'Report', icon: 'alert-circle-outline' }
 ];
 
 interface MessageReactionModalProps {
@@ -165,14 +167,18 @@ const MessageReactionModal: React.FC<MessageReactionModalProps> = ({
           // Use clipboard API here
         }
         break;
-      case 'Translate':
-        // Implement translation functionality
+      case 'Forward':
+        // Implement forward functionality
+        break;
+      case 'Delete for you':
+        // Implement delete functionality
+        break;
+      case 'Report':
+        // Implement report functionality
         break;
       default:
-        // More options
         break;
     }
-    
     onClose();
   };
   
@@ -245,7 +251,7 @@ const MessageReactionModal: React.FC<MessageReactionModalProps> = ({
           {/* Use BlurView as the background */}
           <BlurView 
             intensity={Platform.OS === 'ios' ? 60 : 80} 
-            tint="dark" 
+            tint="light" 
             style={StyleSheet.absoluteFill} 
           />
           
@@ -260,7 +266,7 @@ const MessageReactionModal: React.FC<MessageReactionModalProps> = ({
             ]}
           >
             {/* Reaction Emoji Section with Blur Background */}
-            <BlurView intensity={80} tint="dark" style={styles.reactionsContainerBlur}>
+            <BlurView intensity={80} tint="light" style={styles.reactionsContainerBlur}>
               <View style={styles.reactionsContainerInner}>
                 {REACTIONS.map((reaction) => {
                   const reactionUsers = messageReactions[reaction.name] || [];
@@ -289,7 +295,7 @@ const MessageReactionModal: React.FC<MessageReactionModalProps> = ({
             
             {/* Message bubble with Blur Background */}
             <TouchableOpacity onPress={handleShowReactions}>
-              <BlurView intensity={70} tint="dark" style={styles.messageBubbleBlur}>
+              <BlurView intensity={70} tint="light" style={styles.messageBubbleBlur}>
                 <Text style={styles.messageText} numberOfLines={1}>
                   {messageText}
                 </Text>
@@ -297,7 +303,7 @@ const MessageReactionModal: React.FC<MessageReactionModalProps> = ({
             </TouchableOpacity>
             
             {/* Options Section with Blur Background */}
-            <BlurView intensity={80} tint="dark" style={styles.optionsContainerBlur}>
+            <BlurView intensity={80} tint="light" style={styles.optionsContainerBlur}>
               {MESSAGE_OPTIONS.map((option, index) => (
                 <TouchableOpacity
                   key={option.text}
@@ -307,8 +313,8 @@ const MessageReactionModal: React.FC<MessageReactionModalProps> = ({
                   ]}
                   onPress={() => handleOptionPress(option.text)}
                 >
+                  <Ionicons name={option.icon} size={22} color="#222" style={styles.optionIcon} />
                   <Text style={styles.optionText}>{option.text}</Text>
-                  <Text style={styles.optionIcon}>{option.icon}</Text>
                 </TouchableOpacity>
               ))}
             </BlurView>
@@ -330,7 +336,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.3)', // Lighter background since we have blur now
+    backgroundColor: 'rgba(255, 255, 255, 0.2)', // Lighter background for white theme
   },
   mainContainer: {
     position: 'absolute',
@@ -349,7 +355,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: 'rgba(51, 51, 51, 0.5)', // Semi-transparent background
+    backgroundColor: 'rgba(255,255,255,0.7)', // White semi-transparent
   },
   reactionButton: {
     width: 40,
@@ -360,7 +366,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 4,
   },
   selectedReaction: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(0,0,0,0.07)',
   },
   reactionEmoji: {
     fontSize: 24,
@@ -371,12 +377,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 20,
-    backgroundColor: 'rgba(68, 68, 68, 0.7)', // Semi-transparent background
+    backgroundColor: 'rgba(220,220,220,0.7)',
     marginLeft: 4,
   },
   addReactionIcon: {
     fontSize: 24,
-    color: '#FFFFFF',
+    color: '#222',
     fontWeight: 'bold',
   },
   messageBubbleBlur: {
@@ -387,35 +393,36 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   messageText: {
-    color: '#FFFFFF',
+    color: '#222',
     fontSize: 15,
     padding: 12,
-    backgroundColor: 'rgba(51, 51, 51, 0.5)', // Semi-transparent background
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    fontWeight: '500',
   },
   optionsContainerBlur: {
     width: '100%',
     borderRadius: 12,
     overflow: 'hidden',
+    marginTop: 2,
   },
   optionButton: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 16,
     paddingHorizontal: 20,
     borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(68, 68, 68, 0.7)',
-    backgroundColor: 'rgba(34, 34, 34, 0.5)', // Semi-transparent background
+    borderBottomColor: 'rgba(220,220,220,0.7)',
+    backgroundColor: 'rgba(255,255,255,0.9)',
   },
   lastOptionButton: {
     borderBottomWidth: 0,
   },
   optionIcon: {
-    fontSize: 18,
-    color: '#FFFFFF',
+    marginRight: 16,
+    color: '#222',
   },
   optionText: {
-    color: '#FFFFFF',
+    color: '#222',
     fontSize: 18,
     fontWeight: '500',
   },

@@ -149,6 +149,8 @@ const ChatScreen: React.FC = () => {
 
   const [stickerModalVisible, setStickerModalVisible] = useState(false);
 
+  const prevMessageCountRef = useRef<number>(0);
+
   // Listen for authentication changes
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(user => {
@@ -222,12 +224,20 @@ const ChatScreen: React.FC = () => {
 
   // Scroll to the bottom when messages change
   useEffect(() => {
-    if (messages.length > 0 && flatListRef.current && !isLoadingMessages) {
+    if (
+      messages.length > 0 &&
+      flatListRef.current &&
+      !isLoadingMessages &&
+      messages.length > prevMessageCountRef.current // Only if new message
+    ) {
       const timer = setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: false });
       }, 300);
+      prevMessageCountRef.current = messages.length;
       return () => clearTimeout(timer);
     }
+    // Always update the ref to the latest count
+    prevMessageCountRef.current = messages.length;
   }, [messages, isLoadingMessages]);
 
   // Send image from the photo gallery
