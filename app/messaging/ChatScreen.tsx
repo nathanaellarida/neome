@@ -137,6 +137,7 @@ const ChatScreen: React.FC = () => {
   const [reactionModalVisible, setReactionModalVisible] = useState(false);
   const [selectedMessageId, setSelectedMessageId] = useState('');
   const [selectedMessageText, setSelectedMessageText] = useState('');
+  const [selectedMessageSenderId, setSelectedMessageSenderId] = useState<string>('');
   const [tapPosition, setTapPosition] = useState<{ x: number; y: number } | null>(null);
   
   // Photo gallery modal state
@@ -561,6 +562,9 @@ const ChatScreen: React.FC = () => {
     setTapPosition({ x: pageX, y: pageY });
     setSelectedMessageId(messageId);
     setSelectedMessageText(messageText);
+    // Find the senderId from messages
+    const msg = messages.find(m => m.id === messageId);
+    setSelectedMessageSenderId(msg ? msg.senderId : '');
     setReactionModalVisible(true);
   };
 
@@ -998,6 +1002,7 @@ const ChatScreen: React.FC = () => {
           currentUserId={currentUserId}
           position={tapPosition}
           messageText={selectedMessageText}
+          senderId={selectedMessageSenderId}
         />
 
         {/* Photo Gallery Modal */}

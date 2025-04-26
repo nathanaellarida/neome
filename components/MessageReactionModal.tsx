@@ -49,6 +49,7 @@ interface MessageReactionModalProps {
   currentUserId: string;
   position: { x: number; y: number } | null;
   messageText: string;
+  senderId: string;
 }
 
 interface ReactionUser {
@@ -68,7 +69,8 @@ const MessageReactionModal: React.FC<MessageReactionModalProps> = ({
   chatId,
   currentUserId,
   position,
-  messageText
+  messageText,
+  senderId
 }) => {
   const [scaleAnim] = useState(new Animated.Value(0));
   const [messageReactions, setMessageReactions] = useState<{ [key: string]: string[] }>({});
@@ -303,7 +305,14 @@ const MessageReactionModal: React.FC<MessageReactionModalProps> = ({
             </TouchableOpacity>
             
             {/* Options Section with Blur Background */}
-            <BlurView intensity={80} tint="light" style={styles.optionsContainerBlur}>
+            <BlurView
+              intensity={80}
+              tint="light"
+              style={[
+                styles.optionsContainerBlur,
+                senderId === currentUserId ? styles.optionsRight : styles.optionsLeft
+              ]}
+            >
               {MESSAGE_OPTIONS.map((option, index) => (
                 <TouchableOpacity
                   key={option.text}
@@ -338,6 +347,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.2)', // Lighter background for white theme
   },
+  
   mainContainer: {
     position: 'absolute',
     alignSelf: 'center',
@@ -400,10 +410,16 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   optionsContainerBlur: {
-    width: '100%',
+    width: '75%',
     borderRadius: 12,
     overflow: 'hidden',
     marginTop: 2,
+  },
+  optionsLeft: {
+    alignSelf: 'flex-start',
+  },
+  optionsRight: {
+    alignSelf: 'flex-end',
   },
   optionButton: {
     flexDirection: 'row',
@@ -413,6 +429,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0.5,
     borderBottomColor: 'rgba(220,220,220,0.7)',
     backgroundColor: 'rgba(255,255,255,0.9)',
+  },
+  optionButtonLeft: {
+    justifyContent: 'flex-start',
+  },
+  optionButtonRight: {
+    justifyContent: 'flex-end',
   },
   lastOptionButton: {
     borderBottomWidth: 0,
