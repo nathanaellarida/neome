@@ -11,7 +11,7 @@ export default function Layout() {
   const pathname = usePathname();
 
   useEffect(() => {
-    router.replace('/homescreen/HomeScreen');
+    router.replace('/loginpage/register');
   }, []);
 
   return (

@@ -67,14 +67,14 @@ export default function AchievementScreen() {
         {/* Buttons Outside the Card */}
         <TouchableOpacity
           style={styles.primaryButton}
-          onPress={() => router.push('/Challenges')}
+          onPress={() => router.push('/Challenges/ChallengeDashboard')}
         >
           <Text style={styles.primaryButtonText}>Explore Challenge</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.secondaryButton}
-          onPress={() => router.push('/Leaderboard')}
+          onPress={() => router.push('/leaderboard/overallLeaderboard')}
         >
           <Text style={styles.secondaryButtonText}>View Leaderboard</Text>
         </TouchableOpacity>
@@ -97,7 +97,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
   },
-
   iconWrapper: {
     width: 135,
     height: 135,
@@ -106,7 +105,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: -30,
+    marginTop: -10,
     zIndex: 10,
     shadowColor: '#000',
     shadowOpacity: 0.2,
@@ -126,7 +125,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     height: 400,
     borderRadius: 25,
-    paddingTop: 75,
+    paddingTop: 70,
     paddingBottom: 30,
     paddingLeft: 25,
     paddingRight: 20,
@@ -174,46 +173,44 @@ const styles = StyleSheet.create({
   congratsTitle: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#44349B',
+    color: '#FFFFFF',
   },
   congratsSub: {
     fontSize: 16,
-    color: '#44349B',
+    color: '#FFFFFF',
     marginTop: 6,
+    fontWeight: 'semibold'
   },
   congratsHint: {
-    fontSize: 14,
-    color: '#44349B',
+    fontSize: 12,
+    color: '#FFFFFF',
     textAlign: 'center',
     marginTop: 10,
   },
 
   primaryButton: {
-    backgroundColor: '#6549FE',
+    backgroundColor: '#fff',
     paddingVertical: 14,
     paddingHorizontal: 30,
     borderRadius: 30,
-    width: width - 40,
+    width: width - 100,
     alignSelf: 'center',
     marginTop: 20,
   },
   primaryButtonText: {
-    color: '#fff',
+    color: '#6549FE',
     fontWeight: 'bold',
     textAlign: 'center',
     fontSize: 16,
   },
-
   secondaryButton: {
     backgroundColor: '#fff',
     paddingVertical: 14,
     paddingHorizontal: 30,
     borderRadius: 30,
-    width: width - 40,
+    width: width - 100,
     alignSelf: 'center',
     marginTop: 10,
-    borderWidth: 1.5,
-    borderColor: '#6549FE',
   },
   secondaryButtonText: {
     color: '#6549FE',

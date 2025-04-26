@@ -1,69 +1,110 @@
-import React from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Dimensions } from 'react-native';
-import { useRouter } from 'expo-router';  // ✅ Import router
+import React, { useState } from 'react';
+import { StyleSheet, View, Text, TouchableOpacity, SafeAreaView } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Image } from 'react-native';
+import { auth, db } from '../../firebaseConfig';
+import { doc, updateDoc } from 'firebase/firestore';
 
-const femaleAvatar = require('../assets/images/femalepic.png');  
-const maleAvatar = require('../assets/images/malepic.png');  
+const femaleAvatar = require('../assets/images/femalepic.png');
+const maleAvatar = require('../assets/images/malepic.png');
+
+type Gender = 'male' | 'female' | null;
 
 export default function UserDataScreen1() {
-  const { width, height } = Dimensions.get('window'); 
-  const scaleWidth = width / 1080;
-  const scaleHeight = height / 1920;
-  const router = useRouter(); // ✅ Correct way to use router
+  const router = useRouter();
+  const [selectedGender, setSelectedGender] = useState<Gender>(null);
+
+  const handleGenderSelect = (gender: Gender) => {
+    setSelectedGender(gender);
+  };
+
+  const handleNext = async () => {
+    if (!selectedGender || !auth.currentUser) return;
+
+    try {
+      // Update the user document with the selected gender
+      const userRef = doc(db, "users", auth.currentUser.uid);
+      await updateDoc(userRef, {
+        gender: selectedGender
+      });
+
+      // Navigate to next screen
+      router.push('/neome_userdata_app/selectAvatar');
+    } catch (error) {
+      console.error("Error updating gender:", error);
+      alert("Failed to save gender selection. Please try again.");
+    }
+  };
 
   return (
     <View style={styles.container}>
-
-      {/* Progress Bar */}
-      <View style={[styles.progressBarContainer, { top: 90 * scaleHeight, right: 60* scaleWidth }]}>
-        <Text style={[styles.progressText, { fontSize: 40 * scaleWidth }]}>1/8</Text>
+      {/* Progress Container */}
+      <View style={styles.progressContainer}>
+        {/* Progress Bar */}
+        <View style={styles.progressBarBackground}>
+          <View style={styles.progressBarFill} />
+        </View>
+        <Text style={styles.progressText}>1/9</Text>
       </View>
 
-      {/* Progress Bar Status */}
-      <View style={[styles.progressStatus, { top: 105 * scaleHeight, left: 180* scaleWidth }]}>
+      {/* Header Section */}
+      <View style={styles.headerSection}>
+        <Text style={styles.title}>Tell Us About Yourself!</Text>
+        <Text style={styles.subtitle}>
+          To give you a better experience we need to{'\n'}know your gender
+        </Text>
       </View>
 
-      {/* Progress Bar Status Colored */}
-              <View style={[styles.progressStatusColored, { top: 72 * scaleHeight, left: 180* scaleWidth }]}>
-                        </View>
-
-      {/* Title */}
-      <Text style={[styles.title, {top: 244 * scaleHeight, fontSize: 75 * scaleWidth}]}>
-        Tell Us About Yourself!
-      </Text>
-
-      {/* Subtitle */}
-      <Text style={[styles.subtitle, { top: 362 * scaleHeight, fontSize: 50 * scaleWidth }]}>
-        To give you a better experience, we need to know your gender
-      </Text>
-
-      {/* Gender Buttons */}
-      <View style={[styles.genderButtonsContainer, { top: 675 * scaleHeight, paddingHorizontal: 85 * scaleWidth }]}>
-        {/* Male Button */}
-        <TouchableOpacity style={[styles.genderButton, styles.maleButton, { width: 442 * scaleWidth, height: 608 * scaleHeight }]}>
-          <Text style={[styles.genderButtonText, { fontSize: 60 * scaleWidth }]}>Male</Text>
+      {/* Gender Selection Section */}
+      <View style={styles.genderSection}>
+        <TouchableOpacity 
+          style={[
+            styles.genderCard,
+            selectedGender === 'male' && styles.selectedCard
+          ]}
+          onPress={() => handleGenderSelect('male')}
+        >
+          <Image 
+            source={maleAvatar} 
+            style={styles.avatar} 
+            resizeMode="contain"
+          />
+          <Text style={[
+            styles.genderText,
+            selectedGender === 'male' && styles.selectedText
+          ]}>Male</Text>
         </TouchableOpacity>
 
-        {/* Female Button */}
-        <TouchableOpacity style={[styles.genderButton, styles.femaleButton, { width: 442 * scaleWidth, height: 608 * scaleHeight, marginLeft: -80 * scaleWidth }]}>
-          <Text style={[styles.genderButtonText, { fontSize: 60 * scaleWidth }]}>Female</Text>
+        <TouchableOpacity 
+          style={[
+            styles.genderCard,
+            selectedGender === 'female' && styles.selectedCard
+          ]}
+          onPress={() => handleGenderSelect('female')}
+        >
+          <Image 
+            source={femaleAvatar} 
+            style={styles.avatar} 
+            resizeMode="contain"
+          />
+          <Text style={[
+            styles.genderText,
+            selectedGender === 'female' && styles.selectedText
+          ]}>Female</Text>
         </TouchableOpacity>
       </View>
-
-      {/* Female Avatar */}
-      <Image source={femaleAvatar} style={styles.femaleAvatar} resizeMode="contain" />
-      {/* Male Avatar */}
-      <Image source={maleAvatar} style={styles.maleAvatar} resizeMode="contain" />
 
       {/* Next Button */}
       <TouchableOpacity 
-        style={[styles.nextButton, { left: 162 * scaleWidth, top: 1681 * scaleHeight, width: 757 * scaleWidth, height: 135 * scaleHeight }]} 
-        onPress={() => router.push('/neome_userdata_app/userdatascreen')} // ✅ Added navigation
+        style={[
+          styles.nextButton,
+          !selectedGender && styles.nextButtonDisabled
+        ]}
+        onPress={handleNext}
+        disabled={!selectedGender}
       >
-        <Text style={[styles.nextButtonText, { fontSize: 48 * scaleWidth }]}>Next</Text>
+        <Text style={styles.nextButtonText}>Next</Text>
       </TouchableOpacity>
-
     </View>
   );
 }
@@ -72,94 +113,107 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+    padding: 20,
   },
-  femaleAvatar: {
-    position: 'absolute',
-    top: 270,
-    width: 158,
-    height: 158, 
-    left: 180
+  progressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginTop: 40,
+    marginRight: 20,
+    gap: 10,
   },
-  maleAvatar: {
-    position: 'absolute',
-    top: 270,
-    width: 158,
-    height: 158, 
-    right: 180
-  },
-  progressStatus: {
-    width: 240, // Same width & height
+  progressBarBackground: {
+    width: 240,
     height: 12,
     backgroundColor: '#F3F6FF',
     borderRadius: 80,
+    overflow: 'hidden',
   },
-  progressStatusColored: {
-    width: 30, // Same width & height
-    height: 12,
+  progressBarFill: {
+    width: '11.11%', // 1/9 = ~11.11%
+    height: '100%',
     backgroundColor: '#6549FE',
     borderRadius: 80,
-  },
-  progressBarContainer: {
-    position: 'absolute',
-     color: '#AEAEAE',
   },
   progressText: {
+    fontSize: 16,
     fontWeight: '600',
     color: '#6549FE',
+  },
+  headerSection: {
+    marginTop: 50,
+    alignItems: 'center',
   },
   title: {
-    position: 'absolute',
+    fontSize: 28,
     fontWeight: '600',
     color: '#6549FE',
-    width: '100%',
-    textAlign: 'center'
+    marginBottom: 12,
   },
   subtitle: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
+    fontSize: 16,
     color: '#AEAEAE',
-    width: '100%',
-    textAlign: 'center'
-
+    textAlign: 'center',
+    lineHeight: 24,
   },
-  genderButtonsContainer: {
-    position: 'absolute',
+  genderSection: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
+    justifyContent: 'center',
+    marginTop: 48,
+    gap: 12,
   },
-  genderButton: {
-    backgroundColor: '#F3F6FF',
-    justifyContent: 'flex-end',
+  genderCard: {
+    width: '48%',
+    aspectRatio: 0.7,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
     alignItems: 'center',
-    borderRadius: 16,
+    justifyContent: 'center',
+    paddingVertical: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.8,
-    shadowRadius: 2,
-    elevation: 5,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  maleButton: {
-    marginRight: 30,
+  selectedCard: {
+    backgroundColor: '#6549FE',
   },
-  femaleButton: {
-    marginLeft: 30,
+  avatar: {
+    width: '90%',
+    height: '75%',
+    marginBottom: 16,
   },
-  genderButtonText: {
-    fontWeight: '600',
+  genderText: {
+    fontSize: 18,
     color: '#6549FE',
-    marginBottom: 20,
+    fontWeight: '600',
+  },
+  selectedText: {
+    color: '#FFFFFF',
   },
   nextButton: {
-    position: 'absolute',
     backgroundColor: '#6549FE',
-    justifyContent: 'center',
+    borderRadius: 100,
+    height: 56,
+    marginHorizontal: 16,
     alignItems: 'center',
-    borderRadius: 67,
+    justifyContent: 'center',
+    position: 'absolute',
+    bottom: 32,
+    left: 0,
+    right: 0,
+  },
+  nextButtonDisabled: {
+    backgroundColor: '#E8E8E8',
   },
   nextButtonText: {
-    fontWeight: '600',
     color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
