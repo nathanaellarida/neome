@@ -11,7 +11,14 @@ export default function Layout() {
   const pathname = usePathname();
 
   useEffect(() => {
+<<<<<<< HEAD
     router.replace('/homescreen/HomeScreen');
+=======
+    // Change this path to the screen you're working on
+    //router.replace('/neome_userdata_app/UserDataScreen1');
+    router.replace('/homescreen/HomeScreen');
+    //router.replace('/loginpage/SignUp');
+>>>>>>> Matt
   }, []);
 
   return (
