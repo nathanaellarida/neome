@@ -1,28 +1,6 @@
 import React, { useEffect, useState } from "react";
-<<<<<<< HEAD
-import {
-  View,
-  Image,
-  StyleSheet,
-  FlatList,
-  ActivityIndicator,
-  TouchableOpacity,
-  Alert,
-} from "react-native";
-import {
-  collection,
-  query,
-  where,
-  onSnapshot,
-  getDoc,
-  doc,
-  getDocs,
-  Query,
-} from "firebase/firestore";
-=======
 import { View, Image, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, Alert } from "react-native";
-import { collection, query, where, onSnapshot, getDoc, doc, getDocs, updateDoc } from "firebase/firestore";
->>>>>>> Matt
+import { collection, query, where, onSnapshot, getDoc, doc, getDocs, updateDoc, Query, QuerySnapshot, DocumentSnapshot } from "firebase/firestore";
 import { getDownloadURL, ref } from "firebase/storage";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { db, storage } from "../firebaseConfig";
@@ -43,9 +21,6 @@ const ActiveAvatarList = () => {
   const router = useRouter();
   const auth = getAuth();
 
-<<<<<<< HEAD
-  const currentUserId = "835YwhuoxRfs7y1g2DIQ";
-=======
   // Update user's online status
 
 useEffect(() => {
@@ -88,7 +63,6 @@ useEffect(() => {
     subscription.remove(); // Clean up the AppState listener
   };
 }, []);
->>>>>>> Matt
 
   useEffect(() => {
     const fetchFriends = async () => {
@@ -126,15 +100,24 @@ useEffect(() => {
 
         while (friendIds.length > 0) {
           const batch = friendIds.splice(0, batchSize);
-          const friendsQuery: Query = query(
+          const friendsQuery = query(
             collection(db, "users"),
             where("__name__", "in", batch)
           );
 
-          const unsubscribe = onSnapshot(friendsQuery, async (snapshot) => {
+          const unsubscribe = onSnapshot(friendsQuery, async (snapshot: QuerySnapshot) => {
             const friendsData: Friend[] = await Promise.all(
-              snapshot.docs.map(async (docSnap) => {
+              snapshot.docs.map(async (docSnap: DocumentSnapshot) => {
                 const data = docSnap.data();
+                if (!data) {
+                  return {
+                    id: docSnap.id,
+                    name: "Unknown",
+                    avatarUrl: "",
+                    avatarPath: "",
+                    online: false,
+                  };
+                }
                 let avatarUrl = "";
                 if (data.avatar) {
                   try {

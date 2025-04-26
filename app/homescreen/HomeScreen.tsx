@@ -1,20 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { ScrollView, StyleSheet, View, Text, TouchableOpacity, Dimensions, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { WebView } from 'react-native-webview';
 // Make sure to import from expo-svg if using Expo
 import Svg, { Circle } from 'react-native-svg';
 import { router } from 'expo-router';
-<<<<<<< HEAD
-import { WebView } from 'react-native-webview';
-=======
-import { auth, db } from '../../firebaseConfig';
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
->>>>>>> Matt
+import { auth, db, storage } from '../../firebaseConfig';
+import { doc, updateDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { getDownloadURL, ref } from 'firebase/storage';
 
 export default function HomeScreen() {
   const today = new Date();
   const currentDay = today.toLocaleDateString('en-US', { weekday: 'short' });
   const currentMonthYear = today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const [userName, setUserName] = useState('');
+  const [profileImageUrl, setProfileImageUrl] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
 
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -27,6 +28,40 @@ export default function HomeScreen() {
   const circumference = radius * 2 * Math.PI;
   const progressPercent = 70; // 70% complete
   const progressValue = circumference - (circumference * progressPercent) / 100;
+
+  // Fetch user data
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const currentUser = auth.currentUser;
+        if (!currentUser) return;
+
+        // Get user document from Firestore
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setUserName(userData.name || 'User');
+
+          // Get profile image URL from Storage
+          if (userData.avatar) {
+            try {
+              const imageRef = ref(storage, userData.avatar);
+              const url = await getDownloadURL(imageRef);
+              setProfileImageUrl(url);
+            } catch (error) {
+              console.warn('Error fetching profile image:', error);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, []);
 
   // Update lastActive timestamp
   useEffect(() => {
@@ -60,10 +95,14 @@ export default function HomeScreen() {
       <View style={styles.headerContainer}>
           {/* Profile Image and Text */}
           <View style={styles.profileSection}>
-          <Image source={require('../assets/images/pfp.png')} style={styles.profileImage} />
+            {profileImageUrl ? (
+              <Image source={{ uri: profileImageUrl }} style={styles.profileImage} />
+            ) : (
+              <Image source={require('../assets/images/pfp.png')} style={styles.profileImage} />
+            )}
             <View style={styles.textContainer}>
               <Text style={styles.greeting}>Hello!</Text>
-              <Text style={styles.username}>Akari</Text>
+              <Text style={styles.username}>{userName}</Text>
             </View>
           </View>
 
@@ -556,7 +595,7 @@ export default function HomeScreen() {
           <Ionicons name="calendar-outline" size={25} color="#6549FE" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navButton} onPress={() => router.push('./messaging/MessageHome')}>
+        <TouchableOpacity style={styles.navButton} onPress={() => router.push('/messaging/MessageHome')}>
           <Ionicons name="chatbubble-ellipses-outline" size={25} color="#6549FE" />
         </TouchableOpacity>
       </View>
