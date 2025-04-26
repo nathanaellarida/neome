@@ -141,20 +141,24 @@ const ChallengeTimerScreen: React.FC = () => {
             <Ionicons name="checkmark-circle-outline" size={90} color="green" />
             <Text style={styles.modalTitle}>Successfully stopped the challenge</Text>
             <Text style={styles.modalSubtitle}>Your current points will be your final points</Text>
+            
+            {/* ✅ Confirm Button navigates to Leaderboard */}
             <TouchableOpacity
               style={styles.modalPrimaryBtn}
               onPress={() => {
                 setShowStopSuccessModal(false);
-                // Add your leaderboard route here if any
+                router.push('/Challenges/Points'); // 👈 Add your route here
               }}
             >
-              <Text style={styles.btnText}>View Leaderboards</Text>
+              <Text style={styles.btnText}>Confirm</Text>
             </TouchableOpacity>
+
+            {/* Back Button */}
             <TouchableOpacity
               style={styles.modalSecondaryBtn}
               onPress={() => {
                 setShowStopSuccessModal(false);
-                router.push('/Challenges/ChallengeDashboard')
+                router.push('/Challenges/ChallengeDashboard');
               }}
             >
               <Text style={styles.secondaryText}>Back</Text>
