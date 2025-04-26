@@ -1,15 +1,17 @@
-import React, { useState } from 'react';
-import { View, Image, Text, StyleSheet, Dimensions, TouchableOpacity, TextInput } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Image, Text, StyleSheet, Dimensions, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { auth } from '../../firebaseConfig';
 import ActiveAvatarList from '../../components/ActiveAvatarList';
-import FriendMessageList from '../../components/FriendMessageList'; // This will be updated to use the new structure
+import FriendMessageList from '../../components/FriendMessageList';
 
 // Define interface for chat item
 interface ChatItem {
   id: string;
   name: string;
   avatar: string;
+  avatarUrl: string;
   lastMessage: string;
   time: string;
   unread: number;
@@ -22,17 +24,54 @@ const { width } = Dimensions.get('window');
 const MessageHome: React.FC = () => {
   const [activeTab, setActiveTab] = useState('My Friends');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
+  // Set up Firebase Auth listener
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(user => {
+      if (user) {
+        // User is signed in
+        setIsLoading(false);
+      } else {
+        // Redirect to login if not authenticated
+        router.replace('/loginpage/login');
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   const handleChatPress = (chat: ChatItem) => {
+    // Get current user from Firebase Auth
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      return;
+    }
+    
+    const currentUserId = currentUser.uid;
+    
     router.push({
       pathname: '/messaging/ChatScreen',
       params: {
         chatId: chat.id,
-        userName: chat.name,
+        receiverId: chat.id.replace(`${currentUserId}_`, '').replace(`_${currentUserId}`, ''),
+        receiverName: chat.name,
+        receiverAvatar: chat.avatar,
+        senderId: currentUserId
       }
     } as any);
   };
+
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#6549FE" />
+        <Text style={styles.loadingText}>Loading messages...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -87,7 +126,10 @@ const MessageHome: React.FC = () => {
       {activeTab === 'My Friends' ? (
         <View style={styles.contentContainer}>
           <ActiveAvatarList />
-          <FriendMessageList onChatPress={handleChatPress} searchQuery={searchQuery} />
+          <FriendMessageList 
+            onChatPress={handleChatPress} 
+            searchQuery={searchQuery}
+          />
         </View>
       ) : (
         <View style={styles.challengesContainer}>
@@ -123,6 +165,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F6FF',
     alignItems: 'center',
     justifyContent: 'flex-start',
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    color: '#6549FE',
+    fontSize: 16,
   },
   headerContainer: {
     width: width,
