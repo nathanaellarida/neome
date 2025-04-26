@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { View, Image, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, Alert } from "react-native";
-import { collection, query, where, onSnapshot, getDoc, doc, getDocs, updateDoc, Query, QuerySnapshot, DocumentSnapshot } from "firebase/firestore";
+import { collection, query, where, onSnapshot, getDoc, doc, getDocs, updateDoc, QuerySnapshot, DocumentSnapshot } from "firebase/firestore";
 import { getDownloadURL, ref } from "firebase/storage";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { db, storage } from "../firebaseConfig";
@@ -22,60 +22,58 @@ const ActiveAvatarList = () => {
   const auth = getAuth();
 
   // Update user's online status
+  useEffect(() => {
+    const updateOnlineStatus = async (isOnline: boolean) => {
+      const currentUser = auth.currentUser;
+      if (!currentUser) return;
 
-useEffect(() => {
-  const updateOnlineStatus = async (isOnline: boolean) => {
-    const currentUser = auth.currentUser;
-    if (!currentUser) return;
+      try {
+        const userRef = doc(db, "users", currentUser.uid);
+        await updateDoc(userRef, {
+          online: isOnline,
+          lastSeen: new Date()
+        });
+      } catch (error) {
+        console.error("Error updating online status:", error);
+      }
+    };
 
-    try {
-      const userRef = doc(db, "users", currentUser.uid);
-      await updateDoc(userRef, {
-        online: isOnline
-      });
-    } catch (error) {
-      console.error("Error updating online status:", error);
-    }
-  };
+    // Set online status when component mounts
+    updateOnlineStatus(true);
 
-  // Set online status when component mounts
-  updateOnlineStatus(true);
+    // Setup auth state listener
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        updateOnlineStatus(true);
+      }
+    });
 
-  // Setup auth state listener
-  const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-    if (user) {
-      updateOnlineStatus(true);
-    }
-  });
+    // Set up AppState event listener for React Native
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'background' || nextAppState === 'inactive') {
+        updateOnlineStatus(false);
+      } else if (nextAppState === 'active') {
+        updateOnlineStatus(true);
+      }
+    });
 
-  // Set up AppState event listener for React Native
-  const subscription = AppState.addEventListener('change', (nextAppState) => {
-    if (nextAppState === 'background' || nextAppState === 'inactive') {
+    return () => {
       updateOnlineStatus(false);
-    } else if (nextAppState === 'active') {
-      updateOnlineStatus(true);
-    }
-  });
-
-  return () => {
-    updateOnlineStatus(false);
-    unsubscribeAuth();
-    subscription.remove(); // Clean up the AppState listener
-  };
-}, []);
+      unsubscribeAuth();
+      subscription.remove();
+    };
+  }, []);
 
   useEffect(() => {
     const fetchFriends = async () => {
       try {
-        // Get current user from Firebase Auth
         const currentUser = auth.currentUser;
-        
         if (!currentUser) {
           console.warn("No authenticated user found");
           setLoading(false);
           return;
         }
-        
+
         const currentUserId = currentUser.uid;
         const userDocRef = doc(db, "users", currentUserId);
         const userDoc = await getDoc(userDocRef);
@@ -94,65 +92,57 @@ useEffect(() => {
           return;
         }
 
-        const batchSize = 10;
-        const allFriends: Friend[] = [];
-        const unsubscribeFns: (() => void)[] = [];
+        // Create a single query for all friends
+        const friendsQuery = query(
+          collection(db, "users"),
+          where("__name__", "in", friendIds)
+        );
 
-        while (friendIds.length > 0) {
-          const batch = friendIds.splice(0, batchSize);
-          const friendsQuery = query(
-            collection(db, "users"),
-            where("__name__", "in", batch)
-          );
-
-          const unsubscribe = onSnapshot(friendsQuery, async (snapshot: QuerySnapshot) => {
-            const friendsData: Friend[] = await Promise.all(
-              snapshot.docs.map(async (docSnap: DocumentSnapshot) => {
-                const data = docSnap.data();
-                if (!data) {
-                  return {
-                    id: docSnap.id,
-                    name: "Unknown",
-                    avatarUrl: "",
-                    avatarPath: "",
-                    online: false,
-                  };
-                }
-                let avatarUrl = "";
-                if (data.avatar) {
-                  try {
-                    const avatarRef = ref(storage, data.avatar);
-                    avatarUrl = await getDownloadURL(avatarRef);
-                  } catch (error) {
-                    console.warn("Failed to get avatar URL:", error);
-                  }
-                }
-
+        // Set up real-time listener for friends' status
+        const unsubscribe = onSnapshot(friendsQuery, async (snapshot: QuerySnapshot) => {
+          const friendsData: Friend[] = await Promise.all(
+            snapshot.docs.map(async (docSnap: DocumentSnapshot) => {
+              const data = docSnap.data();
+              if (!data) {
                 return {
                   id: docSnap.id,
-                  name: data.name || "Unknown",
-                  avatarUrl,
-                  avatarPath: data.avatar || "",
-                  online: data.online || false,
+                  name: "Unknown",
+                  avatarUrl: "",
+                  avatarPath: "",
+                  online: false,
                 };
-              })
-            );
+              }
 
-            allFriends.push(...friendsData);
+              let avatarUrl = "";
+              if (data.avatar) {
+                try {
+                  const avatarRef = ref(storage, data.avatar);
+                  avatarUrl = await getDownloadURL(avatarRef);
+                } catch (error) {
+                  console.warn("Failed to get avatar URL:", error);
+                }
+              }
 
-            const sorted = allFriends.sort((a, b) => {
-              if (a.online !== b.online) return a.online ? -1 : 1;
-              return a.name.localeCompare(b.name);
-            });
+              return {
+                id: docSnap.id,
+                name: data.name || "Unknown",
+                avatarUrl,
+                avatarPath: data.avatar || "",
+                online: data.online || false,
+              };
+            })
+          );
 
-            setFriends(sorted);
-            setLoading(false);
+          const sorted = friendsData.sort((a, b) => {
+            if (a.online !== b.online) return a.online ? -1 : 1;
+            return a.name.localeCompare(b.name);
           });
 
-          unsubscribeFns.push(unsubscribe);
-        }
+          setFriends(sorted);
+          setLoading(false);
+        });
 
-        return () => unsubscribeFns.forEach((fn) => fn());
+        return () => unsubscribe();
       } catch (error) {
         console.error("Error fetching friends:", error);
         setLoading(false);
