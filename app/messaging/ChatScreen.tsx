@@ -17,6 +17,7 @@ import PhotoGalleryModal from '../messaging/PhotoGalleryModal';
 import AudioRecorder from './AudioRecorder';
 import { Audio } from 'expo-av';
 import PreviewEmojiModal from '../../components/PreviewEmojiModal';
+import StickerPreviewModal from './StickerPreviewModal';
 
 const { width } = Dimensions.get('window');
 const BACK_BUTTON = require('../assets/images/backPurple.png');
@@ -144,6 +145,8 @@ const ChatScreen: React.FC = () => {
   const [reactionUsers, setReactionUsers] = useState<ReactionUser[]>([]);
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
+
+  const [stickerModalVisible, setStickerModalVisible] = useState(false);
 
   // Listen for authentication changes
   useEffect(() => {
@@ -737,6 +740,33 @@ const ChatScreen: React.FC = () => {
     }
   };
 
+  const handleStickerSelected = async (stickerUrl: string) => {
+    if (!chatId || !currentUserId || !receiverId) return;
+    try {
+      // Update the chat document
+      const chatDocRef = doc(db, 'chats', chatId);
+      await updateDoc(chatDocRef, {
+        lastMessage: '🖼️ Sticker',
+        lastSender: currentUserId,
+        updatedAt: serverTimestamp(),
+        [`unreadCounts.${receiverId}`]: 1,
+        [`typingUsers.${currentUserId}`]: false
+      });
+      // Add message document with sticker image URL
+      await addDoc(collection(db, 'chats', chatId, 'messages'), {
+        text: '',
+        imageUrl: stickerUrl,
+        senderId: currentUserId,
+        timestamp: serverTimestamp(),
+        readBy: [currentUserId]
+      });
+      setStickerModalVisible(false);
+    } catch (err) {
+      console.error('Error sending sticker:', err);
+      Alert.alert('Error', 'Failed to send sticker');
+    }
+  };
+
   if (!currentUserId) {
     return (
       <View style={[styles.container, styles.loaderContainer]}>
@@ -875,7 +905,7 @@ const ChatScreen: React.FC = () => {
                   <TouchableOpacity style={styles.iconButton} onPress={openPhotoGallery}>
                     <Ionicons name="image-outline" size={24} color="#000000" />
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.iconButton}>
+                  <TouchableOpacity style={styles.iconButton} onPress={() => setStickerModalVisible(true)}>
                     <Ionicons name="happy-outline" size={24} color="#000000" />
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.iconButton}>
@@ -886,6 +916,12 @@ const ChatScreen: React.FC = () => {
             </View>
           </View>
         </KeyboardAvoidingView>
+
+        <StickerPreviewModal
+          visible={stickerModalVisible}
+          onClose={() => setStickerModalVisible(false)}
+          onStickerSelect={handleStickerSelected}
+        />
 
         {/* Message Reaction Modal */}
         <MessageReactionModal
