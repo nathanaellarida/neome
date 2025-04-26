@@ -5,8 +5,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   Dimensions,
+  Image,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
 const { width, height } = Dimensions.get('window');
@@ -63,7 +63,11 @@ export default function FloatingChatbot() {
       {...panResponder.panHandlers}
     >
       <TouchableOpacity onPress={() => router.push('/chatbot/App')}>
-        <Ionicons name="chatbubbles-outline" size={32} color="#6549FE" />
+        {/* 👇 Replace Ionicons with Image */}
+        <Image
+          source={require('../assets/images/chatbot-icon.png')} // ← replace with your chatbot image path
+          style={styles.iconImage}
+        />
       </TouchableOpacity>
     </Animated.View>
   );
@@ -73,9 +77,14 @@ const styles = StyleSheet.create({
   floatingIcon: {
     position: 'absolute',
     zIndex: 999,
-    backgroundColor: 'white',
+    backgroundColor: '#6549FE',
     borderRadius: 30,
-    padding: 14,
     elevation: 10,
+  },
+  iconImage: {
+    width: 50,
+    height: 50,
+    resizeMode: 'stretch',
+    borderRadius: 30,
   },
 });
