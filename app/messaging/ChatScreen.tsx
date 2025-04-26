@@ -607,6 +607,61 @@ const ChatScreen: React.FC = () => {
     const hasReactions = item.reactions && 
       Object.values(item.reactions).some(users => users && users.length > 0);
     
+    // Detect if this is a sticker (Googleapis URL and from sticker modal)
+    const isSticker = item.imageUrl && item.imageUrl.includes('firebasestorage.googleapis.com') &&
+      (item.imageUrl.includes('neome_stickers') || item.imageUrl.includes('stickers'));
+
+    if (isSticker) {
+      return (
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onLongPress={(event) => handleMessageLongPress(item.id, '', event)}
+        >
+          <View
+            style={[
+              styles.stickerContainer,
+              item.senderId === currentUserId
+                ? { alignSelf: 'flex-end', marginLeft: 0, marginRight: 0 }
+                : { alignSelf: 'flex-start', marginLeft: 0, marginRight: 0 }
+            ]}
+          >
+            <Image 
+              source={{ uri: item.imageUrl }} 
+              style={styles.stickerImage}
+              resizeMode="contain"
+            />
+            {/* Reactions Display for stickers */}
+            {hasReactions && (
+              <TouchableOpacity 
+                onPress={() => handleShowReactions(item.reactions || {})}
+                style={[
+                  styles.reactionsContainer,
+                  item.senderId === currentUserId ? styles.myReactionsContainer : styles.otherReactionsContainer
+                ]}
+              >
+                <View style={[styles.reactionBubble, { borderRadius: 16 }]}> 
+                  {Object.entries(item.reactions || {}).map(([reactionName, users]) => {
+                    if (users && users.length > 0) {
+                      const reaction = REACTIONS.find((r: Reaction) => r.name === reactionName);
+                      return (
+                        <Text key={reactionName} style={styles.reactionEmoji}>
+                          {reaction?.emoji}
+                        </Text>
+                      );
+                    }
+                    return null;
+                  })}
+                  <Text style={styles.reactionCount}>
+                    {Object.values(item.reactions || {}).reduce((total, users) => total + (users?.length || 0), 0)}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            )}
+          </View>
+        </TouchableOpacity>
+      );
+    }
+
     return (
       <TouchableOpacity
         activeOpacity={0.9}
@@ -1222,6 +1277,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     paddingHorizontal: 12,
+  },
+  stickerContainer: {
+    alignItems: 'flex-start',
+    justifyContent: 'flex-start',
+    marginLeft: 255,
+    backgroundColor: 'transparent',
+    padding: 0,
+    margin: 0,
+  },
+  stickerImage: {
+    width: 120,
+    height: 120,
+    backgroundColor: 'transparent',
   },
 });
 
