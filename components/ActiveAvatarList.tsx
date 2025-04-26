@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { View, Image, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, Alert } from "react-native";
-import { collection, query, where, onSnapshot, getDoc, doc, getDocs } from "firebase/firestore";
+import { collection, query, where, onSnapshot, getDoc, doc, getDocs, updateDoc } from "firebase/firestore";
 import { getDownloadURL, ref } from "firebase/storage";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { db, storage } from "../firebaseConfig";
 import { useRouter } from "expo-router";
+import { AppState } from "react-native";
 
 interface Friend {
   id: string;
@@ -17,12 +19,64 @@ const ActiveAvatarList = () => {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const auth = getAuth();
 
-  const currentUserId = '835YwhuoxRfs7y1g2DIQ';
+  // Update user's online status
+
+useEffect(() => {
+  const updateOnlineStatus = async (isOnline: boolean) => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
+    try {
+      const userRef = doc(db, "users", currentUser.uid);
+      await updateDoc(userRef, {
+        online: isOnline
+      });
+    } catch (error) {
+      console.error("Error updating online status:", error);
+    }
+  };
+
+  // Set online status when component mounts
+  updateOnlineStatus(true);
+
+  // Setup auth state listener
+  const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+    if (user) {
+      updateOnlineStatus(true);
+    }
+  });
+
+  // Set up AppState event listener for React Native
+  const subscription = AppState.addEventListener('change', (nextAppState) => {
+    if (nextAppState === 'background' || nextAppState === 'inactive') {
+      updateOnlineStatus(false);
+    } else if (nextAppState === 'active') {
+      updateOnlineStatus(true);
+    }
+  });
+
+  return () => {
+    updateOnlineStatus(false);
+    unsubscribeAuth();
+    subscription.remove(); // Clean up the AppState listener
+  };
+}, []);
 
   useEffect(() => {
     const fetchFriends = async () => {
       try {
+        // Get current user from Firebase Auth
+        const currentUser = auth.currentUser;
+        
+        if (!currentUser) {
+          console.warn("No authenticated user found");
+          setLoading(false);
+          return;
+        }
+        
+        const currentUserId = currentUser.uid;
         const userDocRef = doc(db, "users", currentUserId);
         const userDoc = await getDoc(userDocRef);
 
@@ -84,6 +138,14 @@ const ActiveAvatarList = () => {
 
   const handleAvatarPress = async (friend: Friend) => {
     try {
+      const currentUser = auth.currentUser;
+      
+      if (!currentUser) {
+        Alert.alert("Error", "You need to be logged in to access chats");
+        return;
+      }
+      
+      const currentUserId = currentUser.uid;
       const chatId1 = `${currentUserId}_${friend.id}`;
       const chatId2 = `${friend.id}_${currentUserId}`;
 
@@ -154,7 +216,11 @@ const ActiveAvatarList = () => {
                 ) : (
                   <View style={[styles.avatar, styles.placeholderAvatar]} />
                 )}
-                {item.online && <View style={styles.onlineIndicator} />}
+                {item.online ? (
+                  <View style={styles.onlineIndicator} />
+                ) : (
+                  <View style={styles.offlineIndicator} />
+                )}
               </View>
             </View>
           </TouchableOpacity>
@@ -205,6 +271,17 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     backgroundColor: "green",
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#FFFFFF",
+  },
+  offlineIndicator: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    width: 12,
+    height: 12,
+    backgroundColor: "#bbbbbb",
     borderRadius: 6,
     borderWidth: 1,
     borderColor: "#FFFFFF",

@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ScrollView, StyleSheet, View, Text, TouchableOpacity, Dimensions, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 // Make sure to import from expo-svg if using Expo
 import Svg, { Circle } from 'react-native-svg';
 import { router } from 'expo-router';
+import { auth, db } from '../../firebaseConfig';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
 export default function HomeScreen() {
   const today = new Date();
@@ -19,6 +21,32 @@ export default function HomeScreen() {
   const circumference = radius * 2 * Math.PI;
   const progressPercent = 70; // 70% complete
   const progressValue = circumference - (circumference * progressPercent) / 100;
+
+  // Update lastActive timestamp
+  useEffect(() => {
+    const updateLastActive = async () => {
+      const currentUser = auth.currentUser;
+      if (!currentUser) return;
+
+      try {
+        const userRef = doc(db, 'users', currentUser.uid);
+        await updateDoc(userRef, {
+          lastActive: serverTimestamp()
+        });
+      } catch (error) {
+        console.warn('Failed to update lastActive:', error);
+      }
+    };
+
+    // Update on mount
+    updateLastActive();
+
+    // Set up interval to update every minute
+    const intervalId = setInterval(updateLastActive, 60000);
+
+    // Cleanup interval on unmount
+    return () => clearInterval(intervalId);
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -202,7 +230,7 @@ export default function HomeScreen() {
         <View style={styles.challengeContainer}>
         <Image source={require('../assets/images/challengeYourSelf.png')} style={styles.challengeImage} />
           <Text style={styles.challengeTitle}>Challenge Yourself</Text>
-          <Text style={styles.challengeMainText}>Let’s Play{'\n'}Together</Text>
+          <Text style={styles.challengeMainText}>Let's Play{'\n'}Together</Text>
 
           {/* Buttons */}
           <View style={styles.challengeButtonContainer}>

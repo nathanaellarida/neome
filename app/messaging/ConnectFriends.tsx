@@ -1,28 +1,53 @@
 // pages/friends/ConnectFriends.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Dimensions, TouchableOpacity, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import FindFriends from '../../components/FindFriends';
 import MyFriendsList from '../../components/MyFriendsList';
 import FriendRequestList from '../../components/FriendRequestList';
-
+import { getAuth } from 'firebase/auth';
 
 const { width } = Dimensions.get('window');
 
 const ConnectFriends: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'Find Friends' | 'My Friends' | 'Friend Request'>('Find Friends');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const router = useRouter();
+  const auth = getAuth();
 
-  const currentUserId = '835YwhuoxRfs7y1g2DIQ';
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        setCurrentUserId(user.uid);
+      } else {
+        // Handle the case when user is not authenticated
+        setCurrentUserId(null);
+        // Optionally redirect to login screen
+        // router.push('/login');
+      }
+    });
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  }, []);
 
   const clearSearch = () => {
     setSearchQuery('');
   };
 
   const renderContent = () => {
+    // If currentUserId is null, we can show a loading state or redirect
+    if (!currentUserId) {
+      return (
+        <View style={styles.centerContent}>
+          <Text style={styles.emptyListText}>Please sign in to view friends</Text>
+        </View>
+      );
+    }
+
     switch (activeTab) {
       case 'Find Friends':
         return <FindFriends currentUserId={currentUserId} searchQuery={searchQuery} />;

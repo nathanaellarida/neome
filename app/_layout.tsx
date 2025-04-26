@@ -9,7 +9,9 @@ export default function Layout() {
   // Use useEffect to navigate after the component is mounted
   useEffect(() => {
     // Change this path to the screen you're working on
-    router.replace('/loginpage/login');
+    //router.replace('/neome_userdata_app/UserDataScreen1');
+    router.replace('/homescreen/HomeScreen');
+    //router.replace('/loginpage/SignUp');
   }, []);
 
   return (
