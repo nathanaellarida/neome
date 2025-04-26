@@ -10,6 +10,7 @@ import {
 } from 'firebase/firestore';
 import { auth, db, storage } from '../../firebaseConfig';
 import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { getDownloadURL, ref } from 'firebase/storage';
 import MessageReactionModal, { REACTIONS, Reaction } from '../../components/MessageReactionModal';
@@ -961,7 +962,7 @@ const ChatScreen: React.FC = () => {
                     <Ionicons name="image-outline" size={24} color="#000000" />
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.iconButton} onPress={() => setStickerModalVisible(true)}>
-                    <Ionicons name="happy-outline" size={24} color="#000000" />
+                    <MaterialCommunityIcons name="sticker-emoji" size={24} color="#000000" />
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.iconButton}>
                     <Ionicons name="add-circle-outline" size={24} color="#000000" />
