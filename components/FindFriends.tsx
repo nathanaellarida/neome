@@ -109,18 +109,30 @@ const FindFriends: React.FC<FindFriendsProps> = ({ currentUserId, searchQuery })
   useEffect(() => {
     const fetchCurrentUser = async () => {
       try {
+        if (!currentUserId) {
+          console.error("No current user ID provided");
+          return;
+        }
+        
+        console.log("Fetching current user with ID:", currentUserId);
         const userDoc = await getDoc(doc(db, 'users', currentUserId));
+        
         if (userDoc.exists()) {
           const userData = userDoc.data();
           const processedUser = await processUserData(currentUserId, userData);
           setCurrentUser(processedUser);
+          console.log("Current user set:", processedUser.name);
+        } else {
+          console.error("Current user document not found");
         }
       } catch (error) {
         console.error('Error fetching current user:', error);
       }
     };
 
-    fetchCurrentUser();
+    if (currentUserId) {
+      fetchCurrentUser();
+    }
   }, [currentUserId]);
 
   useEffect(() => {
@@ -141,6 +153,13 @@ const FindFriends: React.FC<FindFriendsProps> = ({ currentUserId, searchQuery })
   const fetchPotentialFriends = async () => {
     setLoading(true);
     try {
+      if (!currentUserId) {
+        console.error("No current user ID available for fetching potential friends");
+        return;
+      }
+      
+      console.log("Fetching potential friends, excluding current user:", currentUserId);
+      
       const usersRef = collection(db, 'users');
       const snapshot = await getDocs(usersRef);
 
@@ -148,12 +167,14 @@ const FindFriends: React.FC<FindFriendsProps> = ({ currentUserId, searchQuery })
 
       const potentialFriendsPromises: Promise<UserData>[] = [];
       snapshot.forEach((docSnap) => {
+        // Explicitly filter out the current user
         if (docSnap.id !== currentUserId && !friendsList.includes(docSnap.id)) {
           potentialFriendsPromises.push(processUserData(docSnap.id, docSnap.data()));
         }
       });
 
       const potentialFriends = await Promise.all(potentialFriendsPromises);
+      console.log(`Found ${potentialFriends.length} potential friends`);
       setUsers(potentialFriends);
     } catch (error) {
       console.error('Error fetching potential friends:', error);
@@ -165,6 +186,13 @@ const FindFriends: React.FC<FindFriendsProps> = ({ currentUserId, searchQuery })
   const handleSearch = async () => {
     setLoading(true);
     try {
+      if (!currentUserId) {
+        console.error("No current user ID available for search");
+        return;
+      }
+      
+      console.log("Searching users with query:", searchQuery);
+      
       const usersRef = collection(db, 'users');
       const snapshot = await getDocs(usersRef);
 
@@ -175,7 +203,7 @@ const FindFriends: React.FC<FindFriendsProps> = ({ currentUserId, searchQuery })
       snapshot.forEach((docSnap) => {
         const userData = docSnap.data();
         if (
-          docSnap.id !== currentUserId &&
+          docSnap.id !== currentUserId &&  // Ensure current user is excluded
           !friendsList.includes(docSnap.id) &&
           userData.name &&
           userData.name.toLowerCase().includes(query)
@@ -185,6 +213,7 @@ const FindFriends: React.FC<FindFriendsProps> = ({ currentUserId, searchQuery })
       });
 
       const filteredUsers = await Promise.all(filteredUsersPromises);
+      console.log(`Found ${filteredUsers.length} users matching search query`);
       setUsers(filteredUsers);
     } catch (error) {
       console.error('Error searching:', error);
@@ -276,6 +305,14 @@ const FindFriends: React.FC<FindFriendsProps> = ({ currentUserId, searchQuery })
     return (
       <View style={styles.loaderContainer}>
         <ActivityIndicator size="large" color="#6549FE" />
+      </View>
+    );
+  }
+
+  if (!currentUserId) {
+    return (
+      <View style={styles.loaderContainer}>
+        <Text style={styles.emptyListText}>No authenticated user found</Text>
       </View>
     );
   }
