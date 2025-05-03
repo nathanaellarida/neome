@@ -20,14 +20,11 @@ export default function Layout() {
         <SafeAreaView style={{ flex: 1 }}>
           <Stack screenOptions={{ 
             headerShown: false, 
-<<<<<<< HEAD
             animation: 'fade' 
           }} />
           {pathname !== '/chatbot/App' && <FloatingChatbot />}
-=======
             animation: 'none' 
-                }} />
->>>>>>> Virginia's-branch
+              
         </SafeAreaView>
       </TaskProvider>
     </FolderProvider>

@@ -14,6 +14,8 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Dropdown } from 'react-native-element-dropdown';
 import { Animated, Easing } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
+
 
 const { width } = Dimensions.get('window');
 
@@ -92,11 +94,40 @@ const rotateInterpolate = rotateAnim.interpolate({
 });
 
 
-  const stats = {
-    overall: '68%',
-    stress: '15%',
-    inspiration: '86%',
-  };
+const stats = {
+  overall: '68%',
+  stress: '15%',
+  inspiration: '86%',
+};
+
+const getEmojiForEmotion = (emotion: string) => {
+  switch (emotion.toLowerCase()) {
+    case 'joy':
+      return '😊';
+    case 'sadness':
+      return '😢';
+    case 'anger':
+      return '😠';
+    case 'fear':
+      return '😨';
+    case 'anxiety':
+      return '😰';
+    case 'inspiration':
+      return '✨';
+    case 'stress':
+      return '😖';
+    case 'neutral':
+      return '😐';
+    default:
+      return '🤔';
+  }
+};
+
+const emotionLabels = {
+  overall: 'joy',
+  stress: 'stress',
+  inspiration: 'inspiration',
+};
 
   const weeklyChart = [32, 61, 13, 18, 29, 74, 33];
   const monthlyChart = [20, 18, 12, 35, 44, 28, 16, 37, 50, 41, 39, 27];
@@ -135,39 +166,65 @@ const rotateInterpolate = rotateAnim.interpolate({
               style={styles.avatarBackgroundImage} 
             />
 
-            <View style={styles.statBoxWrapper}>
-              <View style={styles.statBox}>
-                <Image source={require('../assets/images/emoji.png')} style={styles.statEmoji} />
+          <View style={styles.statBoxWrapper}>
+            {Object.entries(stats).map(([key, value]) => (
+              <View key={key} style={styles.statBox}>
+                <Text style={[styles.statEmoji, { fontSize: 30, marginRight: 10 }]}>
+                {getEmojiForEmotion(emotionLabels[key as keyof typeof emotionLabels])}
+                </Text>
                 <View>
-                  <Text style={styles.statLabel}>Overall Stats</Text>
-                  <Text style={styles.statValue}>{stats.overall}</Text>
+                  <Text style={styles.statLabel}>
+                    {key === 'overall' ? 'Overall Stats' : key === 'stress' ? 'Stress Level' : 'Inspiration Level'}
+                  </Text>
+                  <Text style={styles.statValue}>{value}</Text>
                 </View>
               </View>
-              <View style={styles.statBox}>
-                <Image source={require('../assets/images/emoji.png')} style={styles.statEmoji} />
-                <View>
-                  <Text style={styles.statLabel}>Stress Level</Text>
-                  <Text style={styles.statValue}>{stats.stress}</Text>
-                </View>
-              </View>
-              <View style={styles.statBox}>
-                <Image source={require('../assets/images/emoji.png')} style={styles.statEmoji} />
-                <View>
-                  <Text style={styles.statLabel}>Inspiration Level</Text>
-                  <Text style={styles.statValue}>{stats.inspiration}</Text>
-                </View>
-              </View>
-            </View>
+            ))}
+          </View>
+
           </View>
 
           {/* Avatar Image outside to allow overflow */}
           <View style={styles.avatarImageContainer}>
             <Image 
-              source={require('../assets/images/emotionalAvatar.png')} 
+              source={require('../assets/images/heartAvatar.png')} 
               style={styles.avatarImage} 
             />
           </View>
         </View>
+
+        {/* Journal Button */}
+        <TouchableOpacity
+          onPress={() => router.push('./journalManager')}
+          style={{
+            marginHorizontal: 20,
+            marginTop: 8,
+            borderRadius: 20,
+            backgroundColor: '#9a90ff',
+            padding: 20,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            elevation: 4,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.2,
+            shadowRadius: 4,
+          }}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: '#fff', fontSize: 16, fontWeight: 'bold' }}>
+              View Your Journal
+            </Text>
+            <Text style={{ color: '#E0DEFF', fontSize: 12, marginTop: 2 }}>
+              Tap to explore your entries
+            </Text>
+          </View>
+
+          <Ionicons name="arrow-forward-circle" size={32} color="#fff" />
+        </TouchableOpacity>
+
+
 
         {/* Mood Section Container */}
         <View style={styles.moodContainer}>
@@ -186,6 +243,7 @@ const rotateInterpolate = rotateAnim.interpolate({
             ))}
           </ScrollView>
         </View>
+
 
         {/* Mood Chart */}
         <View style={styles.chartHeader}>
@@ -411,9 +469,9 @@ const styles = StyleSheet.create({
   statValue: { color: '#FFA500', fontSize: 16, fontWeight: 'bold' },
   avatarImage: {
     position: 'absolute',
-    width: 215, // make it wider
-    height: 300, // make it taller
-    right: -30, // shift more to the right
+    width: 190, // make it wider
+    height: 280, // make it taller
+    right: -15, // shift more to the right
     bottom: -16, // shift more downward
     resizeMode: 'contain',
     zIndex: 2,
