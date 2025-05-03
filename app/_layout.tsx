@@ -24,6 +24,7 @@ export default function Layout() {
           }} />
           {pathname !== '/chatbot/App' && <FloatingChatbot />}
             animation: 'none' 
+              
         </SafeAreaView>
       </TaskProvider>
     </FolderProvider>
