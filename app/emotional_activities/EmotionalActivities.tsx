@@ -163,7 +163,7 @@ const rotateInterpolate = rotateAnim.interpolate({
           {/* Avatar Image outside to allow overflow */}
           <View style={styles.avatarImageContainer}>
             <Image 
-              source={require('../assets/images/emotionalAvatar.png')} 
+              source={require('../assets/images/avatarEmotional.png')} 
               style={styles.avatarImage} 
             />
           </View>
@@ -411,10 +411,10 @@ const styles = StyleSheet.create({
   statValue: { color: '#FFA500', fontSize: 16, fontWeight: 'bold' },
   avatarImage: {
     position: 'absolute',
-    width: 215, // make it wider
-    height: 300, // make it taller
-    right: -30, // shift more to the right
-    bottom: -16, // shift more downward
+    width: 180, // make it wider
+    height: 250, // make it taller
+    right: -8, // shift more to the right
+    bottom: -7, // shift more downward
     resizeMode: 'contain',
     zIndex: 2,
   },

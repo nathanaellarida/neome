@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   Animated,
   PanResponder,
@@ -11,18 +11,48 @@ import { useRouter } from 'expo-router';
 
 const { width, height } = Dimensions.get('window');
 const ICON_SIZE = 60;
-const SIDE_PADDING = 20;
+const SIDE_PADDING = 0;
 
 export default function FloatingChatbot() {
   const router = useRouter();
 
   const translateX = useRef(new Animated.Value(width - ICON_SIZE - SIDE_PADDING)).current;
   const translateY = useRef(new Animated.Value(100)).current;
+  const opacity = useRef(new Animated.Value(1)).current;
+
+  const hideTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  const resetHideTimer = () => {
+    if (hideTimeout.current) {
+      clearTimeout(hideTimeout.current);
+    }
+
+    Animated.timing(opacity, {
+      toValue: 1,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+
+    hideTimeout.current = setTimeout(() => {
+      Animated.timing(opacity, {
+        toValue: 0.0, 
+        useNativeDriver: true,
+      }).start(); 
+    }, 5000);
+  };
+
+  useEffect(() => {
+    resetHideTimer();
+    return () => {
+      if (hideTimeout.current) clearTimeout(hideTimeout.current);
+    };
+  }, []);
 
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => resetHideTimer(),
       onPanResponderMove: (_, gesture) => {
         translateX.setValue(gesture.moveX - ICON_SIZE / 2);
         translateY.setValue(gesture.moveY - ICON_SIZE / 2);
@@ -30,25 +60,27 @@ export default function FloatingChatbot() {
       onPanResponderRelease: (_, gesture) => {
         const isLeft = gesture.moveX < width / 2;
         const snapToX = isLeft ? SIDE_PADDING : width - ICON_SIZE - SIDE_PADDING;
-
+      
         const snapToY = Math.min(
-          Math.max(gesture.moveY - ICON_SIZE / 2, SIDE_PADDING),
-          height - ICON_SIZE - 100
+          Math.max(gesture.moveY - ICON_SIZE / 2, SIDE_PADDING),           // Top padding
+          height - ICON_SIZE - SIDE_PADDING                                // Bottom padding now equal
         );
-
+      
         Animated.parallel([
           Animated.timing(translateX, {
             toValue: snapToX,
             duration: 300,
-            useNativeDriver: false,
+            useNativeDriver: true,
           }),
           Animated.timing(translateY, {
             toValue: snapToY,
             duration: 300,
-            useNativeDriver: false,
+            useNativeDriver: true,
           }),
         ]).start();
-      },
+      
+        resetHideTimer();
+      }      
     })
   ).current;
 
@@ -58,14 +90,17 @@ export default function FloatingChatbot() {
         styles.floatingIcon,
         {
           transform: [{ translateX }, { translateY }],
+          opacity: opacity,
         },
       ]}
       {...panResponder.panHandlers}
     >
-      <TouchableOpacity onPress={() => router.push('/chatbot/App')}>
-        {/* 👇 Replace Ionicons with Image */}
+      <TouchableOpacity onPress={() => {
+        resetHideTimer();
+        router.push('/chatbot/App');
+      }}>
         <Image
-          source={require('../assets/images/chatbot-icon.png')} // ← replace with your chatbot image path
+          source={require('../assets/images/chatbotImage.png')}
           style={styles.iconImage}
         />
       </TouchableOpacity>
@@ -84,7 +119,7 @@ const styles = StyleSheet.create({
   iconImage: {
     width: 50,
     height: 50,
-    resizeMode: 'stretch',
+    resizeMode: 'contain',
     borderRadius: 30,
   },
 });
