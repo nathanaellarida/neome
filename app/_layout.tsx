@@ -18,7 +18,7 @@ export default function Layout() {
         <SafeAreaView style={{ flex: 1 }}>
           <Stack screenOptions={{ 
             headerShown: false, 
-            animation: 'fade' 
+            animation: 'none' 
                 }} />
         </SafeAreaView>
       </TaskProvider>
