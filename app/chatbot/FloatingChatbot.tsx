@@ -35,7 +35,7 @@ export default function FloatingChatbot() {
 
     hideTimeout.current = setTimeout(() => {
       Animated.timing(opacity, {
-        toValue: 0.1, 
+        toValue: 0.3, 
         useNativeDriver: true,
       }).start(); 
     }, 3000);
