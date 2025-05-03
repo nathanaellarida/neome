@@ -1,5 +1,3 @@
-import User from './messaging/ConnectFriends';
-
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import { View, Text, Image, StyleSheet, Dimensions, TouchableWithoutFeedback } from 'react-native';

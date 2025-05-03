@@ -38,7 +38,7 @@ export default function Register() {
         <Image source={WELCOME} style={styles.welcome} resizeMode="contain" />
 
         {/* Sign-Up (Create Account) Button */}
-        <TouchableOpacity style={styles.createButton} onPress={() => router.push("/loginpage/signIn")}>
+        <TouchableOpacity style={styles.createButton} onPress={() => router.push("/loginpage/SignUp")}>
           <Text style={styles.createButtonText}>Create Account</Text>
         </TouchableOpacity>
 

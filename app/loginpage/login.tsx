@@ -14,7 +14,8 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
-import { auth } from "../../firebaseConfig";
+import { auth, db } from "../../firebaseConfig";
+import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 
 // ✅ Image Paths
 const BACKGROUND_IMG = require("../assets/images/upper_page_design.png");
@@ -58,8 +59,18 @@ export default function Login() {
 
     try {
       await signInWithEmailAndPassword(auth, form.email, form.password);
+      
+      // Update lastActive timestamp after successful login
+      const user = auth.currentUser;
+      if (user) {
+        const userRef = doc(db, 'users', user.uid);
+        await updateDoc(userRef, {
+          lastActive: serverTimestamp()
+        });
+      }
+      
       Alert.alert("Success", "Login Successful! 🎉");
-      router.push("/onboarding/OnboardingScreen");
+      router.push("/homescreen/HomeScreen");
     } catch (error) {
       const errorMessage = (error as any)?.message || "An unknown error occurred.";
       Alert.alert("Login Failed", errorMessage);

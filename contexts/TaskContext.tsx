@@ -39,7 +39,7 @@ const generateDefaultTasks = (): Task[] => [
   },
   {
     title: 'Drink 2 liters of water',
-    description: 'This is the description for this task. This is the description for this task.',
+    description: 'This is the description for this task. So tiring.',
     date: today,
     time: '2:40 PM',
     image: require('../app/assets/images/plaintask3.png'),

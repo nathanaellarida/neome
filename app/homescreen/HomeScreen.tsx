@@ -1,15 +1,21 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ScrollView, StyleSheet, View, Text, TouchableOpacity, Dimensions, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { WebView } from 'react-native-webview';
 // Make sure to import from expo-svg if using Expo
 import Svg, { Circle } from 'react-native-svg';
 import { router } from 'expo-router';
-import { WebView } from 'react-native-webview';
+import { auth, db, storage } from '../../firebaseConfig';
+import { doc, updateDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { getDownloadURL, ref } from 'firebase/storage';
 
 export default function HomeScreen() {
   const today = new Date();
   const currentDay = today.toLocaleDateString('en-US', { weekday: 'short' });
   const currentMonthYear = today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const [userName, setUserName] = useState('');
+  const [profileImageUrl, setProfileImageUrl] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
 
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -23,16 +29,80 @@ export default function HomeScreen() {
   const progressPercent = 70; // 70% complete
   const progressValue = circumference - (circumference * progressPercent) / 100;
 
+  // Fetch user data
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const currentUser = auth.currentUser;
+        if (!currentUser) return;
+
+        // Get user document from Firestore
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setUserName(userData.name || 'User');
+
+          // Get profile image URL from Storage
+          if (userData.avatar) {
+            try {
+              const imageRef = ref(storage, userData.avatar);
+              const url = await getDownloadURL(imageRef);
+              setProfileImageUrl(url);
+            } catch (error) {
+              console.warn('Error fetching profile image:', error);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
+  // Update lastActive timestamp
+  useEffect(() => {
+    const updateLastActive = async () => {
+      const currentUser = auth.currentUser;
+      if (!currentUser) return;
+
+      try {
+        const userRef = doc(db, 'users', currentUser.uid);
+        await updateDoc(userRef, {
+          lastActive: serverTimestamp()
+        });
+      } catch (error) {
+        console.warn('Failed to update lastActive:', error);
+      }
+    };
+
+    // Update on mount
+    updateLastActive();
+
+    // Set up interval to update every minute
+    const intervalId = setInterval(updateLastActive, 60000);
+
+    // Cleanup interval on unmount
+    return () => clearInterval(intervalId);
+  }, []);
+
   return (
     <View style={styles.container}>
       {/* White Header Container */}
       <View style={styles.headerContainer}>
           {/* Profile Image and Text */}
           <View style={styles.profileSection}>
-          <Image source={require('../assets/images/pfp.png')} style={styles.profileImage} />
+            {profileImageUrl ? (
+              <Image source={{ uri: profileImageUrl }} style={styles.profileImage} />
+            ) : (
+              <Image source={require('../assets/images/pfp.png')} style={styles.profileImage} />
+            )}
             <View style={styles.textContainer}>
               <Text style={styles.greeting}>Hello!</Text>
-              <Text style={styles.username}>Akari</Text>
+              <Text style={styles.username}>{userName}</Text>
             </View>
           </View>
 
@@ -313,7 +383,7 @@ export default function HomeScreen() {
         <View style={styles.challengeContainer}>
         <Image source={require('../assets/images/challengeYourSelf.png')} style={styles.challengeImage} />
           <Text style={styles.challengeTitle}>Challenge Yourself</Text>
-          <Text style={styles.challengeMainText}>Let’s Play{'\n'}Together</Text>
+          <Text style={styles.challengeMainText}>Let's Play{'\n'}Together</Text>
 
           {/* Buttons */}
           <View style={styles.challengeButtonContainer}>
@@ -338,7 +408,7 @@ export default function HomeScreen() {
 
           {/* Single Button */}
           <View style={styles.viewButtonContainer}>
-            <TouchableOpacity style={styles.viewButton}>
+            <TouchableOpacity style={styles.viewButton} onPress={() => router.push('../leaderboard/overallLeaderboard')}>
               <Text style={styles.challengeButtonText}>View</Text>
             </TouchableOpacity>
           </View>
@@ -508,12 +578,15 @@ export default function HomeScreen() {
         </TouchableOpacity>
 
         {/* Increased spacing for Statistics */}
-        <TouchableOpacity style={[styles.navButton, { marginRight: 30 }]}>
+        <TouchableOpacity
+          style={[styles.navButton, { marginRight: 30 }]}
+          onPress={() => router.push('/chatbot/App')}
+        >
           <Ionicons name="bar-chart-outline" size={25} color="#6549FE" />
         </TouchableOpacity>
 
         {/* Center Profile Button */}
-        <TouchableOpacity style={styles.centerCircle}>
+        <TouchableOpacity style={styles.centerCircle} onPress={() => router.push('/avatar_progress/AvatarProgressScreen')}>
           <Ionicons name="person" size={32} color="#FFFFFF" />
         </TouchableOpacity>
 
