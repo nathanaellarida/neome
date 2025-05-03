@@ -11,7 +11,7 @@ import { useRouter } from 'expo-router';
 
 const { width, height } = Dimensions.get('window');
 const ICON_SIZE = 60;
-const SIDE_PADDING = 0;
+const SIDE_PADDING = 20;
 
 export default function FloatingChatbot() {
   const router = useRouter();
@@ -35,10 +35,10 @@ export default function FloatingChatbot() {
 
     hideTimeout.current = setTimeout(() => {
       Animated.timing(opacity, {
-        toValue: 0.0, 
+        toValue: 0.1, 
         useNativeDriver: true,
       }).start(); 
-    }, 5000);
+    }, 3000);
   };
 
   useEffect(() => {
