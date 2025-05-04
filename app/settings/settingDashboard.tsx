@@ -47,19 +47,10 @@ export default function SettingsScreen() {
             </TouchableOpacity>
 
             {/* Goals Button */}
-            <TouchableOpacity style={styles.settingButton}>
+            <TouchableOpacity style={styles.settingButton} onPress={() => router.push('/mental_activities/MentalActivities')}>
               <View style={styles.settingLeft}>
                 <MaterialIcons name="track-changes" size={24} color="#6549FE" />
                 <Text style={styles.settingText}>Goals</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#aaa" />
-            </TouchableOpacity>
-
-            {/* Progress Button */}
-            <TouchableOpacity style={styles.settingButton}>
-              <View style={styles.settingLeft}>
-                <FontAwesome5 name="book-open" size={20} color="#6549FE" />
-                <Text style={styles.settingText}>Progress</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color="#aaa" />
             </TouchableOpacity>
