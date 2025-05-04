@@ -157,22 +157,16 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   backButton: {
-    width: 35,
-    height: 35,
-    borderRadius: 17.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#6549FE',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
+    width: 30,
+    height: 30,
+    paddingLeft: 5,
+    paddingTop: 5
   },
   headerText: {
-    marginLeft: 20,
     fontSize: 20,
     fontWeight: 'bold',
     color: '#6549FE',
+    paddingLeft: 10
   },
   tabContainerWrapper: {
     width: width - 40,

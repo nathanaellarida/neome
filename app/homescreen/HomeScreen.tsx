@@ -3,11 +3,14 @@ import { ScrollView, StyleSheet, View, Text, TouchableOpacity, Dimensions, Image
 import { Ionicons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
 // Make sure to import from expo-svg if using Expo
-import Svg, { Circle } from 'react-native-svg';
+//import Svg, { Circle } from 'react-native-svg';
 import { router } from 'expo-router';
 import { auth, db, storage } from '../../firebaseConfig';
 import { doc, updateDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { getDownloadURL, ref } from 'firebase/storage';
+import Svg, { Circle, Text as SvgText } from 'react-native-svg';
+
+
 
 export default function HomeScreen() {
   const today = new Date();
@@ -200,8 +203,7 @@ export default function HomeScreen() {
               environment-image="neutral"
               shadow-intensity="1"
               exposure="1"
-              auto-rotate
-              camera-orbit="0deg 90deg 2.5m">
+              camera-orbit="0deg 80deg 1m">
             </model-viewer>
 
             <script type="module">
@@ -283,85 +285,8 @@ export default function HomeScreen() {
   />
 </View>
 
-
-        <Text style={styles.sectionTitle}>Daily Progress</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.progressScrollContainer}
-          >
-            {/* Progress Circle 1 - Working Hours */}
-            <View style={styles.progressContainer}>
-              <View style={styles.progressCircleContainer}>
-                <View style={styles.progressCircleBackground}>
-                  <View style={[styles.progressCircleFill, { width: '70%' }]} />
-                </View>
-                <View style={styles.innerCircle}>
-                  <Text style={styles.progressPercentage}>70%</Text>
-                </View>
-              </View>
-              <Text style={styles.progressTitle}>Working Hours</Text>
-              <Text style={styles.progressSubtext}>Exceeded by 3 hours</Text>
-            </View>
-
-            {/* Progress Circle 2 - Steps */}
-            <View style={styles.progressContainer}>
-              <View style={styles.progressCircleContainer}>
-                <View style={styles.progressCircleBackground}>
-                  <View style={[styles.progressCircleFill, { width: '85%' , backgroundColor: '#FD6FFF'}]} />
-                </View>
-                <View style={styles.innerCircle}>
-                  <Text style={[styles.progressPercentage, { color: '#FF33A8' }]}>85%</Text>
-                </View>
-              </View>
-              <Text style={styles.progressTitle}>Steps</Text>
-              <Text style={styles.progressSubtext}>2.5k of 3k steps</Text>
-            </View>
-
-            {/* Progress Circle 3 - Hydration */}
-            <View style={styles.progressContainer}>
-              <View style={styles.progressCircleContainer}>
-                <View style={styles.progressCircleBackground}>
-                  <View style={[styles.progressCircleFill, { width: '60%', backgroundColor: '#6DED7C' }]} />
-                </View>
-                <View style={styles.innerCircle}>
-                  <Text style={[styles.progressPercentage, { color: '#6DED7C' }]}>60%</Text>
-                </View>
-              </View>
-              <Text style={styles.progressTitle}>Hydration</Text>
-              <Text style={styles.progressSubtext}>4 of 8 glasses</Text>
-            </View>
-
-            {/* Progress Circle 4 - Calories */}
-            <View style={styles.progressContainer}>
-              <View style={styles.progressCircleContainer}>
-                <View style={styles.progressCircleBackground}>
-                  <View style={[styles.progressCircleFill, { width: '45%',  backgroundColor: '#FF8B8D' }]} />
-                </View>
-                <View style={styles.innerCircle}>
-                  <Text style={[styles.progressPercentage, { color: '#FF8B8D' }]}>45%</Text>
-                </View>
-              </View>
-              <Text style={styles.progressTitle}>Calories</Text>
-              <Text style={styles.progressSubtext}>1350 of 3000 cal</Text>
-            </View>
-
-            {/* Progress Circle 5 - Focus Time */}
-            <View style={styles.progressContainer}>
-              <View style={styles.progressCircleContainer}>
-                <View style={styles.progressCircleBackground}>
-                  <View style={[styles.progressCircleFill, { width: '90%', backgroundColor: '#D078FF' }]} />
-                </View>
-                <View style={styles.innerCircle}>
-                  <Text style={[styles.progressPercentage, { color: '#D078FF' }]}>90%</Text>
-                </View>
-              </View>
-              <Text style={styles.progressTitle}>Focus Time</Text>
-              <Text style={styles.progressSubtext}>5.4 of 6 hours</Text>
-            </View>
-          </ScrollView>    
-
-          <Text style={styles.sectionTitle}>Categories</Text>
+        {/* Categories */}
+        <Text style={styles.sectionTitle}>Categories</Text>
           <View style={styles.categoriesContainer}>
             {[
               { title: 'Physical\nActivities', image: require('../assets/images/physicalacts.png'), screen: '/physical_activities/workoutPlans' },
@@ -382,6 +307,115 @@ export default function HomeScreen() {
             ))}
           </View>
 
+        {/* MY PROGRESS */}
+        <Text style={[styles.sectionTitle, { paddingTop: -20  }]}>My Wellness Progress</Text>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 5, paddingBottom: 30 }}
+        >
+          {[
+            {
+              label: 'Completed Challenges',
+              percent: 80,
+              color: '#6549FE',
+              subtitle: '4 of 5 done today',
+            },
+            {
+              label: 'Mood Stability',
+              percent: 65,
+              color: '#FD6FFF',
+              subtitle: 'Based on journal entries',
+            },
+            {
+              label: 'Journal Entries',
+              percent: 50,
+              color: '#6DED7C',
+              subtitle: '1 of 2 entries completed',
+            },
+            {
+              label: 'To-Do Tasks',
+              percent: 75,
+              color: '#FF8B8D',
+              subtitle: '3 of 4 tasks done',
+            },
+            {
+              label: 'Sleep Quality',
+              percent: 85,
+              color: '#D078FF',
+              subtitle: '6.8 of 8 hrs sleep',
+            },
+          ].map((item, index) => {
+            const radius = 35;
+            const strokeWidth = 6;
+            const center = 40;
+            const circumference = 2 * Math.PI * radius;
+            const strokeDashoffset = circumference - (circumference * item.percent) / 100;
+
+            return (
+              <View
+                key={index}
+                style={{
+                  backgroundColor: '#fff',
+                  borderRadius: 16,
+                  padding: 16,
+                  width: 160,
+                  marginRight: 15,
+                  alignItems: 'center',
+                  elevation: 4,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 6,
+                }}
+              >
+                <Svg width={80} height={80}>
+                  <Circle
+                    stroke="#eee"
+                    fill="none"
+                    cx={center}
+                    cy={center}
+                    r={radius}
+                    strokeWidth={strokeWidth}
+                  />
+                  <Circle
+                    stroke={item.color}
+                    fill="none"
+                    cx={center}
+                    cy={center}
+                    r={radius}
+                    strokeWidth={strokeWidth}
+                    strokeDasharray={`${circumference}`}
+                    strokeDashoffset={strokeDashoffset}
+                    strokeLinecap="round"
+                    rotation="-90"
+                    origin={`${center}, ${center}`}
+                  />
+                  <SvgText
+                    x={center}
+                    y={center + 6}
+                    textAnchor="middle"
+                    fontSize="16"
+                    fontWeight="bold"
+                    fill={item.color}
+                  >
+                    {item.percent}%
+                  </SvgText>
+                </Svg>
+
+                <Text style={{ fontWeight: '600', fontSize: 14, color: '#333', textAlign: 'center', marginTop: 10 }}>
+                  {item.label}
+                </Text>
+                <Text style={{ fontSize: 12, color: '#666', textAlign: 'center', marginTop: 4 }}>
+                  {item.subtitle}
+                </Text>
+              </View>
+            );
+          })}
+        </ScrollView>
+
+        
         {/* Challenge Yourself Section */}
         <View style={styles.challengeContainer}>
         <Image source={require('../assets/images/challengeYourSelf.png')} style={styles.challengeImage} />
@@ -593,9 +627,9 @@ export default function HomeScreen() {
           <Ionicons name="person" size={32} color="#FFFFFF" />
         </TouchableOpacity>
 
-        {/* Increased spacing for Calendar */}
+        {/* Increased spacing for Journal */}
         <TouchableOpacity style={[styles.navButton, { marginLeft: 30 }]}>
-          <Ionicons name="calendar-outline" size={25} color="#6549FE" />
+          <Ionicons name="book-outline" size={25} color="#6549FE" />
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.navButton} onPress={() => router.push('/messaging/MessageHome')}>
@@ -900,7 +934,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     marginTop: 10,
-    marginBottom: 10,
   },
   categoryButton: {
     width: '48%',   // Ensures two buttons per row

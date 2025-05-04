@@ -789,7 +789,7 @@ const analyzeJournal = async () => {
       {/* Folders Section */}
       <View style={{ marginTop: 20 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <Text style={{ fontSize: 20, fontWeight: 'bold' }}>Folders</Text>
+          <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#44349B', marginRight: 135 }}>Folders</Text>
           <TouchableOpacity onPress={openNewFolderModal}>
             <Text style={{ color: '#8B5CF6', fontWeight: 'bold' }}>+ Add Folder</Text>
           </TouchableOpacity>
@@ -860,7 +860,7 @@ const analyzeJournal = async () => {
   
           {/* Notebooks Section */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <Text style={{ fontSize: 20, fontWeight: 'bold' }}>
+          <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#44349B' }}>
             Recent Documents
           </Text>
 
@@ -963,6 +963,7 @@ const analyzeJournal = async () => {
   };
   
 
+  
   // Render journal editor (full screen)
   const renderJournalEditor = () => (
     <View style={{ flex: 1 }}>
@@ -970,9 +971,21 @@ const analyzeJournal = async () => {
       <TouchableOpacity 
         style={styles.backButton}
         onPress={() => {
-          saveJournalEntry();   // ✅ Auto save journal first
-          updateState({ selectedNotebook: null });  // ✅ Then go back
+          if (isEditingJournal) {
+            saveJournalEntry(); // Save text edits
+          } else if (!isEditingJournal && analyzedSentences.length > 0 && state.selectedNotebook) {
+            // Save analyzed sentences
+            const updatedNotebooks = state.notebooks.map((notebook) =>
+              notebook.id === state.selectedNotebook?.id
+                ? { ...notebook, analysis: analyzedSentences }
+                : notebook
+            );
+            updateState({ notebooks: updatedNotebooks });
+          }
+        
+          updateState({ selectedNotebook: null }); // Navigate back
         }}
+        
       >
         <Ionicons name="arrow-back" size={24} color="#333" />
       </TouchableOpacity>
