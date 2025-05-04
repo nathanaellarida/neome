@@ -150,26 +150,26 @@ export default function HomeScreen() {
         </View>
 
         {/* Your Avatar Section */}
-<Text style={styles.sectionTitle}>Your Avatar</Text>
-<View style={styles.mainContainer}>
-  {/* Left: Stats */}
-  <View style={styles.statsContainer}>
-    {[
-      { value: '3,502', label: 'Points', image: require('../assets/images/points.png') },
-      { value: '1,350', label: 'Calories', image: require('../assets/images/calories.png') },
-      { value: '300', label: 'Energy', image: require('../assets/images/energy.png') },
-      { value: '25', label: 'Badges', image: require('../assets/images/badges.png') },
-      { value: '2,532', label: 'Steps', image: require('../assets/images/steps.png') },
-    ].map((item, index) => (
-      <View key={index} style={styles.statBox}>
-        <Image source={item.image} style={styles.statIcon} />
-        <View style={styles.textWrapper}>
-          <Text style={styles.statNumber}>{item.value}</Text>
-          <Text style={styles.statLabel}>{item.label}</Text>
-        </View>
-      </View>
-    ))}
-  </View>
+        <Text style={styles.sectionTitle}>Your Avatar</Text>
+        <View style={styles.mainContainer}>
+          {/* Left: Stats */}
+          <View style={styles.statsContainer}>
+            {[
+              { value: '3,502', label: 'Points', image: require('../assets/images/points.png') },
+              { value: '1,350', label: 'Calories', image: require('../assets/images/calories.png') },
+              { value: '300', label: 'Energy', image: require('../assets/images/energy.png') },
+              { value: '25', label: 'Badges', image: require('../assets/images/badges.png') },
+              { value: '2,532', label: 'Steps', image: require('../assets/images/steps.png') },
+            ].map((item, index) => (
+              <View key={index} style={styles.statBox}>
+                <Image source={item.image} style={styles.statIcon} />
+                <View style={styles.textWrapper}>
+                  <Text style={styles.statNumber}>{item.value}</Text>
+                  <Text style={styles.statLabel}>{item.label}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
 
   {/* Right: Avatar 3D WebView */}
   <WebView
