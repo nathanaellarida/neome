@@ -4,10 +4,10 @@ import {
   PanResponder,
   TouchableOpacity,
   StyleSheet,
-  Dimensions,
-  Image,
+  Dimensions
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
+import { Image } from 'expo-image';
 
 const { width, height } = Dimensions.get('window');
 const ICON_SIZE = 60;
@@ -15,17 +15,33 @@ const SIDE_PADDING = 20;
 
 export default function FloatingChatbot() {
   const router = useRouter();
+  const pathname = usePathname();
 
   const translateX = useRef(new Animated.Value(width - ICON_SIZE - SIDE_PADDING)).current;
   const translateY = useRef(new Animated.Value(100)).current;
   const opacity = useRef(new Animated.Value(1)).current;
-
   const hideTimeout = useRef<NodeJS.Timeout | null>(null);
 
+  const excludedRoutes = [
+    '/loginpage/login',
+    '/loginpage/register',
+    '/loginpage/SignUp',
+    '/loginpage/forgotPassword',
+    '/loginpage/newPassword',
+    '/onboarding/OnboardingScreen',
+    '/neome_userdata_app/activitylevel',
+    '/neome_userdata_app/bodytype',
+    '/neome_userdata_app/heightandweight',
+    '/neome_userdata_app/medicalconditions',
+    '/neome_userdata_app/mentalstressinfo',
+    '/neome_userdata_app/selectAvatar',
+    '/neome_userdata_app/selectBirthdate',
+    '/neome_userdata_app/UserDataScreen1',
+    '/neome_userdata_app/wellnessgoals',
+  ];
+
   const resetHideTimer = () => {
-    if (hideTimeout.current) {
-      clearTimeout(hideTimeout.current);
-    }
+    if (hideTimeout.current) clearTimeout(hideTimeout.current);
 
     Animated.timing(opacity, {
       toValue: 1,
@@ -35,10 +51,11 @@ export default function FloatingChatbot() {
 
     hideTimeout.current = setTimeout(() => {
       Animated.timing(opacity, {
-        toValue: 0.3, 
+        toValue: 0.3,
+        duration: 300,
         useNativeDriver: true,
-      }).start(); 
-    }, 3000);
+      }).start();
+    }, 4000);
   };
 
   useEffect(() => {
@@ -60,12 +77,12 @@ export default function FloatingChatbot() {
       onPanResponderRelease: (_, gesture) => {
         const isLeft = gesture.moveX < width / 2;
         const snapToX = isLeft ? SIDE_PADDING : width - ICON_SIZE - SIDE_PADDING;
-      
+
         const snapToY = Math.min(
-          Math.max(gesture.moveY - ICON_SIZE / 2, SIDE_PADDING),           // Top padding
-          height - ICON_SIZE - SIDE_PADDING                                // Bottom padding now equal
+          Math.max(gesture.moveY - ICON_SIZE / 2, SIDE_PADDING),
+          height - ICON_SIZE - SIDE_PADDING
         );
-      
+
         Animated.parallel([
           Animated.timing(translateX, {
             toValue: snapToX,
@@ -78,11 +95,16 @@ export default function FloatingChatbot() {
             useNativeDriver: true,
           }),
         ]).start();
-      
+
         resetHideTimer();
-      }      
+      },
     })
   ).current;
+
+  // ✅ Render nothing if on excluded screen
+  if (excludedRoutes.includes(pathname)) {
+    return <></>;
+  }
 
   return (
     <Animated.View
@@ -90,7 +112,7 @@ export default function FloatingChatbot() {
         styles.floatingIcon,
         {
           transform: [{ translateX }, { translateY }],
-          opacity: opacity,
+          opacity,
         },
       ]}
       {...panResponder.panHandlers}
@@ -100,7 +122,7 @@ export default function FloatingChatbot() {
         router.push('/chatbot/App');
       }}>
         <Image
-          source={require('../assets/images/chatbotImage.png')}
+          source={require('../assets/images/chatbot.gif')}
           style={styles.iconImage}
         />
       </TouchableOpacity>
@@ -117,8 +139,8 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   iconImage: {
-    width: 50,
-    height: 50,
+    width: 60,
+    height: 60,
     resizeMode: 'contain',
     borderRadius: 30,
   },
