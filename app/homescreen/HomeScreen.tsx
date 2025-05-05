@@ -6,7 +6,7 @@ import { WebView } from 'react-native-webview';
 import Svg, { Circle } from 'react-native-svg';
 import { router } from 'expo-router';
 import { auth, db, storage } from '../../firebaseConfig';
-import { doc, updateDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp, getDoc, collection, query, onSnapshot, where } from 'firebase/firestore';
 import { getDownloadURL, ref } from 'firebase/storage';
 
 export default function HomeScreen() {
@@ -16,6 +16,8 @@ export default function HomeScreen() {
   const [userName, setUserName] = useState('');
   const [profileImageUrl, setProfileImageUrl] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
+  const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
 
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -89,6 +91,34 @@ export default function HomeScreen() {
     return () => clearInterval(intervalId);
   }, []);
 
+  useEffect(() => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+    const notificationsRef = collection(db, 'users', currentUser.uid, 'notifications');
+    const q = query(notificationsRef, where('read', '==', false));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setHasUnreadNotifications(snapshot.size > 0);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+    const q = query(collection(db, 'chats'), where('users', 'array-contains', currentUser.uid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      let hasUnread = false;
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.unreadCounts && data.unreadCounts[currentUser.uid] > 0) {
+          hasUnread = true;
+        }
+      });
+      setHasUnreadMessages(hasUnread);
+    });
+    return () => unsubscribe();
+  }, []);
+
   return (
     <View style={styles.container}>
       {/* White Header Container */}
@@ -108,8 +138,13 @@ export default function HomeScreen() {
 
           {/* Icons */}
           <View style={styles.iconContainer}>
-            <TouchableOpacity>
-              <Ionicons name="notifications-outline" size={23} color="#6549FE" />
+            <TouchableOpacity onPress={() => router.push('/notifications/notificationsDashboard')}>
+              <View>
+                <Ionicons name="notifications-outline" size={23} color="#6549FE" />
+                {hasUnreadNotifications && (
+                  <View style={styles.redDot} />
+                )}
+              </View>
             </TouchableOpacity>
             <TouchableOpacity>
               <Ionicons name="menu-outline" size={28} color="#6549FE" />
@@ -596,7 +631,12 @@ export default function HomeScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.navButton} onPress={() => router.push('/messaging/MessageHome')}>
-          <Ionicons name="chatbubble-ellipses-outline" size={25} color="#6549FE" />
+          <View>
+            <Ionicons name="chatbubble-ellipses-outline" size={25} color="#6549FE" />
+            {hasUnreadMessages && (
+              <View style={styles.redDot} />
+            )}
+          </View>
         </TouchableOpacity>
       </View>
     </View>
@@ -1119,5 +1159,15 @@ const styles = StyleSheet.create({
     elevation: 2,
     position: 'absolute', 
     right: 20,
+  },
+  redDot: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#FF4B4B',
+    zIndex: 10,
   },
 });

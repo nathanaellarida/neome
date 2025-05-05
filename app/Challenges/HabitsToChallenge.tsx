@@ -10,8 +10,8 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { router, useLocalSearchParams } from 'expo-router';
+import { Calendar } from 'react-native-calendars';
 
 type HabitCategory = 'Physical' | 'Mental' | 'Social' | 'Emotional';
 
@@ -29,12 +29,7 @@ const habitCategories: Record<HabitCategory, string[]> = {
     'Jump Rope',
     'Swimming',
     'Cycling',
-    'Hiking',
-    'Pilates',
-    'Strength Training',
-    'Tai Chi',
-    'Zumba',
-    'Stair Climbing'
+    'Hiking'
   ],  
   Mental: [
     'Reading',
@@ -47,11 +42,6 @@ const habitCategories: Record<HabitCategory, string[]> = {
     'Watching Documentaries',
     'Memory Exercises',
     'Mind Mapping',
-    'Problem Solving',
-    'Flashcard Practice',
-    'Trivia Practice',
-    'Meditation with Focus',
-    'Journaling Thoughts'
   ],  
   Social: [
     'Calling Friends',
@@ -63,12 +53,7 @@ const habitCategories: Record<HabitCategory, string[]> = {
     'Sending Encouragement',
     'Helping a Neighbor',
     'Having Coffee with Someone',
-    'Joining a Group Chat',
-    'Complimenting Someone',
-    'Asking How Someone Feels',
-    'Hosting a Game Night',
-    'Online Group Study',
-    'Playing Multiplayer Games'
+    'Joining a Group Chat'
   ],  
   Emotional: [
     'Meditation',
@@ -80,12 +65,7 @@ const habitCategories: Record<HabitCategory, string[]> = {
     'Listening to Music',
     'Mindfulness Practice',
     'Coloring or Drawing',
-    'Digital Detox',
-    'Self-Reflection',
-    'Taking a Nature Walk',
-    'Unplugged Hour',
-    'Doing Nothing (Intentional Rest)',
-    'Emotional Check-In'
+    'Digital Detox'
   ]
 };
 
@@ -93,7 +73,7 @@ const categories: HabitCategory[] = ['Physical', 'Mental', 'Social', 'Emotional'
 
 export default function HabitsToChallenge() {
   const [selectedCategory, setSelectedCategory] = useState<HabitCategory>('Physical');
-  const [addedHabits, setAddedHabits] = useState<Array<{name: string, mins: number, days: number}>>([]);
+  const [addedHabits, setAddedHabits] = useState<Array<{name: string, mins: number, days: number, startDate: string, endDate: string}>>([]);
   const [selectedHabit, setSelectedHabit] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [showTimeModal, setShowTimeModal] = useState(false);
@@ -106,10 +86,11 @@ export default function HabitsToChallenge() {
     date.setDate(date.getDate() + 4); // Default 4 days challenge
     return date;
   });
-  const [showDatePicker, setShowDatePicker] = useState<{
-    mode: 'start' | 'end' | null;
-  }>({ mode: null });
+  const [showCalendarView, setShowCalendarView] = useState(false);
+  const [selectedDateType, setSelectedDateType] = useState<'start' | 'end' | null>(null);
   const [challengeDays, setChallengeDays] = useState(5);
+
+  const params = useLocalSearchParams();
 
   // Calculate days difference when dates change
   useEffect(() => {
@@ -138,35 +119,33 @@ export default function HabitsToChallenge() {
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   };
 
-  const handleDateChange = (_event: any, selectedDate?: Date) => {
-    if (showDatePicker.mode === 'start' && selectedDate) {
+  const handleDateChange = (day: any) => {
+    const selectedDate = new Date(day.timestamp);
+    if (selectedDateType === 'start') {
       setStartDate(selectedDate);
-    } else if (showDatePicker.mode === 'end' && selectedDate) {
+    } else if (selectedDateType === 'end') {
       setEndDate(selectedDate);
     }
-    setShowDatePicker({ mode: null });
+    setShowCalendarView(false);
+    setSelectedDateType(null);
+    calculateDaysDifference();
   };
 
   const openModal = (habit: string) => {
     setSelectedHabit(habit);
-    
     // Check if this habit is already added, if so use its existing values
     const existingHabit = addedHabits.find(h => h.name === habit);
     if (existingHabit) {
       setTime(existingHabit.mins.toString());
-      
-      // Calculate the end date based on existing days
-      const newEndDate = new Date(startDate);
-      newEndDate.setDate(startDate.getDate() + existingHabit.days - 1);
-      setEndDate(newEndDate);
+      setStartDate(new Date(existingHabit.startDate));
+      setEndDate(new Date(existingHabit.endDate));
     } else {
-      // Reset to default values for new habit
       setTime('30');
       const defaultEndDate = new Date();
       defaultEndDate.setDate(defaultEndDate.getDate() + 4);
+      setStartDate(new Date());
       setEndDate(defaultEndDate);
     }
-    
     setShowModal(true);
   };
 
@@ -175,14 +154,18 @@ export default function HabitsToChallenge() {
       alert('End date must be after the start date.');
       return;
     }
-
     // Create the new habit with the configured values
     const newHabit = {
       name: selectedHabit,
       mins: parseInt(time),
-      days: challengeDays
+      days: challengeDays,
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
     };
-    
+
+    console.log('HabitsToChallenge - Adding new habit:', newHabit);
+    console.log('HabitsToChallenge - Current habits before adding:', addedHabits);
+
     // Update or add the habit
     setAddedHabits(prevHabits => {
       const habitIndex = prevHabits.findIndex(h => h.name === selectedHabit);
@@ -190,13 +173,15 @@ export default function HabitsToChallenge() {
         // Update existing habit
         const updatedHabits = [...prevHabits];
         updatedHabits[habitIndex] = newHabit;
+        console.log('HabitsToChallenge - Updated existing habit:', updatedHabits);
         return updatedHabits;
       } else {
         // Add new habit
-        return [...prevHabits, newHabit];
+        const newHabits = [...prevHabits, newHabit];
+        console.log('HabitsToChallenge - Added new habit:', newHabits);
+        return newHabits;
       }
     });
-    
     setShowModal(false);
   };
   
@@ -205,13 +190,29 @@ export default function HabitsToChallenge() {
       router.back();
       return;
     }
+
+    console.log('HabitsToChallenge - Added habits before navigation:', addedHabits);
     
-    // Now we need to pass both the habit names AND their properties
+    // Get existing challenges from params
+    const existingChallengesParam = params?.existingChallenges;
+    let existingChallenges = [];
+    
+    if (existingChallengesParam) {
+      try {
+        existingChallenges = JSON.parse(existingChallengesParam as string);
+        console.log('HabitsToChallenge - Existing challenges:', existingChallenges);
+      } catch (error) {
+        console.error("Error parsing existing challenges:", error);
+      }
+    }
+
+    // Pass both existing challenges and new habits
     router.push({
       pathname: '/Challenges/CreateNewChallenge',
       params: {
-        habits: JSON.stringify(addedHabits)
-      },
+        habits: JSON.stringify(addedHabits),
+        existingChallenges: JSON.stringify(existingChallenges)
+      }
     });
   };
 
@@ -281,53 +282,121 @@ export default function HabitsToChallenge() {
         )}
       </View>
 
-      {/* Habit Configuration Modal */}
+      {/* Single Modal for both Habit Configuration and Calendar */}
       <Modal visible={showModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            {/* Close button */}
-            <TouchableOpacity 
-              style={styles.closeButton} 
-              onPress={() => setShowModal(false)}
-            >
-              <Ionicons name="close" size={24} color="#6549FE" />
-            </TouchableOpacity>
-            
-            <Text style={styles.modalTitle}>Configure "{selectedHabit}"</Text>
-            
-            {/* Time Selector */}
-            <View style={styles.timeRow}>
-              <Text style={styles.modalLabel}>Active Time:</Text>
-              <TouchableOpacity style={styles.timeInput} onPress={() => setShowTimeModal(true)}>
-                <Text style={styles.timeText}>{time} min</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setShowTimeModal(true)}>
-                <Ionicons name="timer-outline" size={20} color="#6549FE" />
-              </TouchableOpacity>
-            </View>
+          <View style={[styles.modalContent, showCalendarView && styles.calendarModalContent]}>
+            {!showCalendarView ? (
+              <>
+                {/* Habit Configuration View */}
+                <TouchableOpacity 
+                  style={styles.closeButton} 
+                  onPress={() => {
+                    setShowModal(false);
+                    setShowCalendarView(false);
+                  }}
+                >
+                  <Ionicons name="close" size={24} color="#6549FE" />
+                </TouchableOpacity>
+                
+                <Text style={styles.modalTitle}>Configure "{selectedHabit}"</Text>
+                
+                {/* Time Selector */}
+                <View style={styles.timeRow}>
+                  <Text style={styles.modalLabel}>Active Time:</Text>
+                  <TouchableOpacity style={styles.timeInput} onPress={() => setShowTimeModal(true)}>
+                    <Text style={styles.timeText}>{time} min</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setShowTimeModal(true)}>
+                    <Ionicons name="timer-outline" size={20} color="#6549FE" />
+                  </TouchableOpacity>
+                </View>
 
-            {/* Date Selectors */}
-            <View style={styles.dateRow}>
-              <Text style={styles.modalLabel}>Start Date:</Text>
-              <Ionicons name="calendar" size={18} color="#6549FE" />
-              <TouchableOpacity onPress={() => setShowDatePicker({ mode: 'start' })}>
-                <Text style={styles.dateText}>{formatDate(startDate)}</Text>
-              </TouchableOpacity>
-            </View>
+                {/* Date Selectors */}
+                <View style={styles.dateRow}>
+                  <Text style={styles.modalLabel}>Start Date:</Text>
+                  <TouchableOpacity 
+                    style={styles.dateButton} 
+                    onPress={() => {
+                      setSelectedDateType('start');
+                      setShowCalendarView(true);
+                    }}
+                  >
+                    <Ionicons name="calendar-outline" size={20} color="#6549FE" />
+                    <Text style={styles.dateText}>{formatDate(startDate)}</Text>
+                  </TouchableOpacity>
+                </View>
 
-            <View style={styles.dateRow}>
-              <Text style={styles.modalLabel}>End Date:</Text>
-              <Ionicons name="calendar" size={18} color="#6549FE" />
-              <TouchableOpacity onPress={() => setShowDatePicker({ mode: 'end' })}>
-                <Text style={styles.dateText}>{formatDate(endDate)}</Text>
-              </TouchableOpacity>
-            </View>
+                <View style={styles.dateRow}>
+                  <Text style={styles.modalLabel}>End Date:</Text>
+                  <TouchableOpacity 
+                    style={styles.dateButton} 
+                    onPress={() => {
+                      setSelectedDateType('end');
+                      setShowCalendarView(true);
+                    }}
+                  >
+                    <Ionicons name="calendar-outline" size={20} color="#6549FE" />
+                    <Text style={styles.dateText}>{formatDate(endDate)}</Text>
+                  </TouchableOpacity>
+                </View>
 
-            <Text style={styles.daysText}>Total Challenge Days: {challengeDays}</Text>
-            
-            <TouchableOpacity style={styles.modalConfirmBtn} onPress={confirmAddHabit}>
-              <Text style={styles.addText}>Add to Challenge</Text>
-            </TouchableOpacity>
+                <Text style={styles.daysText}>Total Challenge Days: {challengeDays}</Text>
+                
+                <TouchableOpacity style={styles.modalConfirmBtn} onPress={confirmAddHabit}>
+                  <Text style={styles.addText}>Add to Challenge</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                {/* Calendar View */}
+                <Calendar
+                  current={selectedDateType === 'start' ? startDate?.toISOString() : endDate?.toISOString()}
+                  onDayPress={(day: { timestamp: number }) => {
+                    const selectedDate = new Date(day.timestamp);
+                    if (selectedDateType === 'start') {
+                      setStartDate(selectedDate);
+                    } else {
+                      setEndDate(selectedDate);
+                    }
+                    setShowCalendarView(false);
+                    calculateDaysDifference();
+                  }}
+                  markedDates={{
+                    [(selectedDateType === 'start' 
+                      ? startDate?.toISOString().split('T')[0] 
+                      : endDate?.toISOString().split('T')[0]) || '']: {
+                      selected: true,
+                      selectedColor: '#6549FE'
+                    }
+                  }}
+                  theme={{
+                    calendarBackground: '#FFFFFF',
+                    textSectionTitleColor: '#6549FE',
+                    selectedDayBackgroundColor: '#6549FE',
+                    selectedDayTextColor: '#FFFFFF',
+                    todayTextColor: '#6549FE',
+                    dayTextColor: '#2d4150',
+                    textDisabledColor: '#d9e1e8',
+                    dotColor: '#6549FE',
+                    monthTextColor: '#6549FE',
+                    textMonthFontWeight: 'bold',
+                    textDayFontSize: 14,
+                    textMonthFontSize: 14,
+                    textDayHeaderFontSize: 14,
+                    arrowColor: '#6549FE'
+                  }}
+                />
+                <TouchableOpacity
+                  style={styles.calendarDoneButton}
+                  onPress={() => {
+                    setShowCalendarView(false);
+                  }}
+                >
+                  <Text style={styles.calendarDoneButtonText}>Done</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </View>
       </Modal>
@@ -359,16 +428,6 @@ export default function HabitsToChallenge() {
           </TouchableOpacity>
         </View>
       </Modal>
-
-      {/* Date Picker */}
-      {showDatePicker.mode && (
-        <DateTimePicker
-          value={showDatePicker.mode === 'start' ? startDate : endDate}
-          mode="date"
-          display={Platform.OS === 'ios' ? 'inline' : 'default'}
-          onChange={handleDateChange}
-        />
-      )}
     </>
   );
 }
@@ -577,5 +636,35 @@ const styles = StyleSheet.create({
   timeOptionText: {
     color: '#6549FE',
     fontWeight: 'bold',
+  },
+  dateButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 15,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  calendarModalContent: {
+    padding: 10,
+    maxWidth: 350,
+  },
+  calendarDoneButton: {
+    backgroundColor: '#6549FE',
+    borderRadius: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    alignSelf: 'center',
+    marginTop: 10,
+    marginBottom: 5,
+  },
+  calendarDoneButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

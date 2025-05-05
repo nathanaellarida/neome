@@ -11,7 +11,10 @@ export default function Layout() {
   const pathname = usePathname();
 
   useEffect(() => {
-    router.replace('/loginpage/register');
+    //router.replace('/loginpage/register');
+    //router.replace('/Challenges/CreateNewChallenge');
+    //router.replace('/components/EmailVerificationModal');
+    router.replace('/homescreen/HomeScreen');
   }, []);
 
   return (
