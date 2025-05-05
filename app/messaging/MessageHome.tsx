@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     marginTop: 20,
     width: '90%',
-    padding: 15,
+    paddingLeft: 20,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   searchIcon: {
-    marginRight: 10,
+    marginRight: 20,
   },
   searchInput: {
     flex: 1,

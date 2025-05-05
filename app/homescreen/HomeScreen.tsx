@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ScrollView, StyleSheet, View, Text, TouchableOpacity, Dimensions, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
 // Make sure to import from expo-svg if using Expo
-import Svg, { Circle } from 'react-native-svg';
+//import Svg, { Circle } from 'react-native-svg';
 import { router } from 'expo-router';
 import { auth, db, storage } from '../../firebaseConfig';
 import { doc, updateDoc, serverTimestamp, getDoc, collection, query, onSnapshot, where } from 'firebase/firestore';
 import { getDownloadURL, ref } from 'firebase/storage';
+import Svg, { Circle, Text as SvgText } from 'react-native-svg';
+import { Audio } from 'expo-av';
 
 export default function HomeScreen() {
   const today = new Date();
@@ -16,8 +18,12 @@ export default function HomeScreen() {
   const [userName, setUserName] = useState('');
   const [profileImageUrl, setProfileImageUrl] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+<<<<<<< HEAD
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
+=======
+    const soundRef = useRef<Audio.Sound | null>(null);
+>>>>>>> dd14cd2f24cd9f5575c7d75e7811975f8596adad
 
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -92,6 +98,7 @@ export default function HomeScreen() {
   }, []);
 
   useEffect(() => {
+<<<<<<< HEAD
     const currentUser = auth.currentUser;
     if (!currentUser) return;
     const notificationsRef = collection(db, 'users', currentUser.uid, 'notifications');
@@ -118,6 +125,37 @@ export default function HomeScreen() {
     });
     return () => unsubscribe();
   }, []);
+=======
+  
+      const loadSound = async () => {
+        const { sound } = await Audio.Sound.createAsync(
+          require('../assets/images/tap.wav'),
+          { shouldPlay: false }
+        );
+        soundRef.current = sound;
+      };
+  
+      loadSound();
+  
+      return () => {
+        if (soundRef.current) {
+          soundRef.current.unloadAsync();
+        }
+      };
+    }, []);
+  
+    const playTapSound = async () => {
+      try {
+        const sound = soundRef.current;
+        if (sound) {
+          await sound.stopAsync(); // Ensure sound starts clean
+          await sound.playFromPositionAsync(0); // No delay, plays from start
+        }
+      } catch (error) {
+        console.warn('Failed to play sound', error);
+      }
+    };
+>>>>>>> dd14cd2f24cd9f5575c7d75e7811975f8596adad
 
   return (
     <View style={styles.container}>
@@ -138,6 +176,7 @@ export default function HomeScreen() {
 
           {/* Icons */}
           <View style={styles.iconContainer}>
+<<<<<<< HEAD
             <TouchableOpacity onPress={() => router.push('/notifications/notificationsDashboard')}>
               <View>
                 <Ionicons name="notifications-outline" size={23} color="#6549FE" />
@@ -147,6 +186,23 @@ export default function HomeScreen() {
               </View>
             </TouchableOpacity>
             <TouchableOpacity>
+=======
+          
+          <TouchableOpacity
+            onPress={async () => {
+              await playTapSound();
+              router.push("/settings/notification");
+            }}
+          >
+            <Ionicons name="notifications-outline" size={23} color="#6549FE" />
+          </TouchableOpacity>
+          <TouchableOpacity
+              onPress={async () => {
+                await playTapSound();
+                router.push("/settings/settingDashboard");
+              }}
+            >
+>>>>>>> dd14cd2f24cd9f5575c7d75e7811975f8596adad
               <Ionicons name="menu-outline" size={28} color="#6549FE" />
             </TouchableOpacity>
           </View>
@@ -179,26 +235,26 @@ export default function HomeScreen() {
         </View>
 
         {/* Your Avatar Section */}
-<Text style={styles.sectionTitle}>Your Avatar</Text>
-<View style={styles.mainContainer}>
-  {/* Left: Stats */}
-  <View style={styles.statsContainer}>
-    {[
-      { value: '3,502', label: 'Points', image: require('../assets/images/points.png') },
-      { value: '1,350', label: 'Calories', image: require('../assets/images/calories.png') },
-      { value: '300', label: 'Energy', image: require('../assets/images/energy.png') },
-      { value: '25', label: 'Badges', image: require('../assets/images/badges.png') },
-      { value: '2,532', label: 'Steps', image: require('../assets/images/steps.png') },
-    ].map((item, index) => (
-      <View key={index} style={styles.statBox}>
-        <Image source={item.image} style={styles.statIcon} />
-        <View style={styles.textWrapper}>
-          <Text style={styles.statNumber}>{item.value}</Text>
-          <Text style={styles.statLabel}>{item.label}</Text>
-        </View>
-      </View>
-    ))}
-  </View>
+        <Text style={styles.sectionTitle}>Your Avatar</Text>
+        <View style={styles.mainContainer}>
+          {/* Left: Stats */}
+          <View style={styles.statsContainer}>
+            {[
+              { value: '3,502', label: 'Points', image: require('../assets/images/points.png') },
+              { value: '1,350', label: 'Calories', image: require('../assets/images/calories.png') },
+              { value: '300', label: 'Energy', image: require('../assets/images/energy.png') },
+              { value: '25', label: 'Badges', image: require('../assets/images/badges.png') },
+              { value: '2,532', label: 'Steps', image: require('../assets/images/steps.png') },
+            ].map((item, index) => (
+              <View key={index} style={styles.statBox}>
+                <Image source={item.image} style={styles.statIcon} />
+                <View style={styles.textWrapper}>
+                  <Text style={styles.statNumber}>{item.value}</Text>
+                  <Text style={styles.statLabel}>{item.label}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
 
   {/* Right: Avatar 3D WebView */}
   <WebView
@@ -232,8 +288,7 @@ export default function HomeScreen() {
               environment-image="neutral"
               shadow-intensity="1"
               exposure="1"
-              auto-rotate
-              camera-orbit="0deg 90deg 2.5m">
+              camera-orbit="0deg 80deg 1m">
             </model-viewer>
 
             <script type="module">
@@ -315,85 +370,8 @@ export default function HomeScreen() {
   />
 </View>
 
-
-        <Text style={styles.sectionTitle}>Daily Progress</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.progressScrollContainer}
-          >
-            {/* Progress Circle 1 - Working Hours */}
-            <View style={styles.progressContainer}>
-              <View style={styles.progressCircleContainer}>
-                <View style={styles.progressCircleBackground}>
-                  <View style={[styles.progressCircleFill, { width: '70%' }]} />
-                </View>
-                <View style={styles.innerCircle}>
-                  <Text style={styles.progressPercentage}>70%</Text>
-                </View>
-              </View>
-              <Text style={styles.progressTitle}>Working Hours</Text>
-              <Text style={styles.progressSubtext}>Exceeded by 3 hours</Text>
-            </View>
-
-            {/* Progress Circle 2 - Steps */}
-            <View style={styles.progressContainer}>
-              <View style={styles.progressCircleContainer}>
-                <View style={styles.progressCircleBackground}>
-                  <View style={[styles.progressCircleFill, { width: '85%' , backgroundColor: '#FD6FFF'}]} />
-                </View>
-                <View style={styles.innerCircle}>
-                  <Text style={[styles.progressPercentage, { color: '#FF33A8' }]}>85%</Text>
-                </View>
-              </View>
-              <Text style={styles.progressTitle}>Steps</Text>
-              <Text style={styles.progressSubtext}>2.5k of 3k steps</Text>
-            </View>
-
-            {/* Progress Circle 3 - Hydration */}
-            <View style={styles.progressContainer}>
-              <View style={styles.progressCircleContainer}>
-                <View style={styles.progressCircleBackground}>
-                  <View style={[styles.progressCircleFill, { width: '60%', backgroundColor: '#6DED7C' }]} />
-                </View>
-                <View style={styles.innerCircle}>
-                  <Text style={[styles.progressPercentage, { color: '#6DED7C' }]}>60%</Text>
-                </View>
-              </View>
-              <Text style={styles.progressTitle}>Hydration</Text>
-              <Text style={styles.progressSubtext}>4 of 8 glasses</Text>
-            </View>
-
-            {/* Progress Circle 4 - Calories */}
-            <View style={styles.progressContainer}>
-              <View style={styles.progressCircleContainer}>
-                <View style={styles.progressCircleBackground}>
-                  <View style={[styles.progressCircleFill, { width: '45%',  backgroundColor: '#FF8B8D' }]} />
-                </View>
-                <View style={styles.innerCircle}>
-                  <Text style={[styles.progressPercentage, { color: '#FF8B8D' }]}>45%</Text>
-                </View>
-              </View>
-              <Text style={styles.progressTitle}>Calories</Text>
-              <Text style={styles.progressSubtext}>1350 of 3000 cal</Text>
-            </View>
-
-            {/* Progress Circle 5 - Focus Time */}
-            <View style={styles.progressContainer}>
-              <View style={styles.progressCircleContainer}>
-                <View style={styles.progressCircleBackground}>
-                  <View style={[styles.progressCircleFill, { width: '90%', backgroundColor: '#D078FF' }]} />
-                </View>
-                <View style={styles.innerCircle}>
-                  <Text style={[styles.progressPercentage, { color: '#D078FF' }]}>90%</Text>
-                </View>
-              </View>
-              <Text style={styles.progressTitle}>Focus Time</Text>
-              <Text style={styles.progressSubtext}>5.4 of 6 hours</Text>
-            </View>
-          </ScrollView>    
-
-          <Text style={styles.sectionTitle}>Categories</Text>
+        {/* Categories */}
+        <Text style={styles.sectionTitle}>Categories</Text>
           <View style={styles.categoriesContainer}>
             {[
               { title: 'Physical\nActivities', image: require('../assets/images/physicalacts.png'), screen: '/physical_activities/workoutPlans' },
@@ -404,7 +382,10 @@ export default function HomeScreen() {
               <TouchableOpacity 
                 key={index} 
                 style={styles.categoryButton} 
-                onPress={() => router.push(category.screen as any)}>
+                onPress={async() => {
+                  await playTapSound();
+                  router.push(category.screen as any);
+                }}>
                 <Image source={category.image} style={styles.categoryImage} />
                 <View style={styles.categoryTextContainer}>
                   <Text style={styles.categoryText}>{category.title}</Text>
@@ -414,6 +395,115 @@ export default function HomeScreen() {
             ))}
           </View>
 
+        {/* MY PROGRESS */}
+        <Text style={[styles.sectionTitle, { paddingTop: -20  }]}>My Wellness Progress</Text>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 5, paddingBottom: 30 }}
+        >
+          {[
+            {
+              label: 'Completed Challenges',
+              percent: 80,
+              color: '#6549FE',
+              subtitle: '4 of 5 done today',
+            },
+            {
+              label: 'Mood Stability',
+              percent: 65,
+              color: '#FD6FFF',
+              subtitle: 'Based on journal entries',
+            },
+            {
+              label: 'Journal Entries',
+              percent: 50,
+              color: '#6DED7C',
+              subtitle: '1 of 2 entries completed',
+            },
+            {
+              label: 'To-Do Tasks',
+              percent: 75,
+              color: '#FF8B8D',
+              subtitle: '3 of 4 tasks done',
+            },
+            {
+              label: 'Sleep Quality',
+              percent: 85,
+              color: '#D078FF',
+              subtitle: '6.8 of 8 hrs sleep',
+            },
+          ].map((item, index) => {
+            const radius = 35;
+            const strokeWidth = 6;
+            const center = 40;
+            const circumference = 2 * Math.PI * radius;
+            const strokeDashoffset = circumference - (circumference * item.percent) / 100;
+
+            return (
+              <View
+                key={index}
+                style={{
+                  backgroundColor: '#fff',
+                  borderRadius: 16,
+                  padding: 16,
+                  width: 160,
+                  marginRight: 15,
+                  alignItems: 'center',
+                  elevation: 4,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 6,
+                }}
+              >
+                <Svg width={80} height={80}>
+                  <Circle
+                    stroke="#eee"
+                    fill="none"
+                    cx={center}
+                    cy={center}
+                    r={radius}
+                    strokeWidth={strokeWidth}
+                  />
+                  <Circle
+                    stroke={item.color}
+                    fill="none"
+                    cx={center}
+                    cy={center}
+                    r={radius}
+                    strokeWidth={strokeWidth}
+                    strokeDasharray={`${circumference}`}
+                    strokeDashoffset={strokeDashoffset}
+                    strokeLinecap="round"
+                    rotation="-90"
+                    origin={`${center}, ${center}`}
+                  />
+                  <SvgText
+                    x={center}
+                    y={center + 6}
+                    textAnchor="middle"
+                    fontSize="16"
+                    fontWeight="bold"
+                    fill={item.color}
+                  >
+                    {item.percent}%
+                  </SvgText>
+                </Svg>
+
+                <Text style={{ fontWeight: '600', fontSize: 14, color: '#333', textAlign: 'center', marginTop: 10 }}>
+                  {item.label}
+                </Text>
+                <Text style={{ fontSize: 12, color: '#666', textAlign: 'center', marginTop: 4 }}>
+                  {item.subtitle}
+                </Text>
+              </View>
+            );
+          })}
+        </ScrollView>
+
+        
         {/* Challenge Yourself Section */}
         <View style={styles.challengeContainer}>
         <Image source={require('../assets/images/challengeYourSelf.png')} style={styles.challengeImage} />
@@ -443,7 +533,10 @@ export default function HomeScreen() {
 
           {/* Single Button */}
           <View style={styles.viewButtonContainer}>
-            <TouchableOpacity style={styles.viewButton} onPress={() => router.push('../leaderboard/overallLeaderboard')}>
+            <TouchableOpacity style={styles.viewButton} onPress={async() => {
+              await playTapSound();
+              router.push('../leaderboard/overallLeaderboard');
+              }}>
               <Text style={styles.challengeButtonText}>View</Text>
             </TouchableOpacity>
           </View>
@@ -615,21 +708,27 @@ export default function HomeScreen() {
         {/* Increased spacing for Statistics */}
         <TouchableOpacity
           style={[styles.navButton, { marginRight: 30 }]}
-          onPress={() => router.push('/chatbot/App')}
+          onPress={async() => {
+            await playTapSound();
+          }}
         >
           <Ionicons name="bar-chart-outline" size={25} color="#6549FE" />
         </TouchableOpacity>
 
         {/* Center Profile Button */}
-        <TouchableOpacity style={styles.centerCircle} onPress={() => router.push('/avatar_progress/AvatarProgressScreen')}>
+        <TouchableOpacity style={styles.centerCircle} onPress={async() =>{
+          await playTapSound();
+          router.push('/avatar_progress/AvatarProgressScreen');
+        } }>
           <Ionicons name="person" size={32} color="#FFFFFF" />
         </TouchableOpacity>
 
-        {/* Increased spacing for Calendar */}
+        {/* Increased spacing for Journal */}
         <TouchableOpacity style={[styles.navButton, { marginLeft: 30 }]}>
-          <Ionicons name="calendar-outline" size={25} color="#6549FE" />
+          <Ionicons name="book-outline" size={25} color="#6549FE" />
         </TouchableOpacity>
 
+<<<<<<< HEAD
         <TouchableOpacity style={styles.navButton} onPress={() => router.push('/messaging/MessageHome')}>
           <View>
             <Ionicons name="chatbubble-ellipses-outline" size={25} color="#6549FE" />
@@ -637,6 +736,13 @@ export default function HomeScreen() {
               <View style={styles.redDot} />
             )}
           </View>
+=======
+        <TouchableOpacity style={styles.navButton} onPress={async() =>{
+          await playTapSound();
+          router.push('/messaging/MessageHome');
+        } }>
+          <Ionicons name="chatbubble-ellipses-outline" size={25} color="#6549FE" />
+>>>>>>> dd14cd2f24cd9f5575c7d75e7811975f8596adad
         </TouchableOpacity>
       </View>
     </View>
@@ -937,7 +1043,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     marginTop: 10,
-    marginBottom: 10,
   },
   categoryButton: {
     width: '48%',   // Ensures two buttons per row

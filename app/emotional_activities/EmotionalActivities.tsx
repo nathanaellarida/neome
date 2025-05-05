@@ -14,6 +14,23 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Dropdown } from 'react-native-element-dropdown';
 import { Animated, Easing } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
+import { LineChart } from 'react-native-chart-kit';
+import { format } from 'date-fns';
+import Svg, { Polygon, Circle, Line, Text as SvgText } from 'react-native-svg';
+
+
+//mood History Componnets
+
+const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const calendarMoodEmojis = ['😄', '😊', '😢', '😡', '😐', '😴', '🤩']; // Mock emojis
+const todayIndex = new Date().getDay();
+
+
+const moodHistoryData = weekdays.map((day, index) => ({
+  day,
+  emoji: index <= todayIndex ? calendarMoodEmojis[index] : '', // Empty after today
+}));
 
 const { width } = Dimensions.get('window');
 
@@ -55,23 +72,55 @@ const moodEmojis = [
   require('../assets/images/6.png'),
 ];
 
-const moodMessages: { [key: string]: string } = {
-  'Happy': 'Happiness fuels your dreams and drives your purpose. Use that energy to conquer mountains and turn every moment into a victory.',
-  'Sad': 'It’s okay to feel down sometimes. Think of it as the valley before the peak—your happiness will return, stronger than before.',
-  'Good Mood': 'When you’re riding the waves of a good mood, let it propel you to reach new heights. Embrace the feeling and let it fuel your dreams.',
-  'Annoyed': 'Annoyance is just a signal that something needs your attention. Channel that energy into solving the problem and reclaim your peace.',
-  'Angry': 'Anger is a powerful force—use it to fuel your resilience, not your regrets. Take control and turn that energy into something productive.',
-  'Tired': 'When you’re tired, remember that rest is just as important as action. Recharge, regroup, and come back stronger.',
-  'Confused': 'When confusion clouds your mind, let it be a sign that you\'re growing. Embrace the uncertainty, ask questions, and clarity will follow.',
-  'Confident': 'Confidence isn’t just believing you can succeed; it’s knowing you will. Embrace it, own it, and let your light shine bright.',
-};
+
+const GEMINI_API_KEY = 'YOUR_GEMINI_API_KEY';
+const MODEL_NAME = 'gemini-2.0-flash';
 
 export default function EmotionalActivities(): JSX.Element {
+  const [aiMoodMessage, setAiMoodMessage] = useState('');
+const [loadingMessage, setLoadingMessage] = useState(false);
+
+const getMoodMessageFromAI = async (emotion: string) => {
+  try {
+    setLoadingMessage(true);
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${GEMINI_API_KEY}`,    
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: `The user is currently feeling ${emotion}. Provide a short 2 sentence motivational statement to make the person feel better. Avoid cliches.`
+                }
+              ]
+            }
+          ]
+        }),
+      }
+    );
+
+    const data = await response.json();
+    const result = data?.candidates?.[0]?.content?.parts?.[0]?.text || aiMoodMessage || 'You got this!';
+    setAiMoodMessage(result);
+  } catch (err) {
+    console.error('AI Mood Message Error:', err);
+    setAiMoodMessage(aiMoodMessage  || 'Unable to fetch message at the moment.');
+  } finally {
+    setLoadingMessage(false);
+  }
+};
+
+
   const [dropdownVisible, setDropdownVisible] = useState<boolean>(false);
   const [period, setPeriod] = useState<'Weekly' | 'Monthly'>('Weekly');
   const [selectedMood, setSelectedMood] = useState<Mood | null>(null);
   const [moodDialogVisible, setMoodDialogVisible] = useState<boolean>(false);
   const router = useRouter();
+  const [moodHistory, setMoodHistory] = useState(moodHistoryData);
+
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const rotateAnim = useState(new Animated.Value(0))[0];
@@ -92,11 +141,40 @@ const rotateInterpolate = rotateAnim.interpolate({
 });
 
 
-  const stats = {
-    overall: '68%',
-    stress: '15%',
-    inspiration: '86%',
-  };
+const stats = {
+  overall: '68%',
+  stress: '15%',
+  inspiration: '86%',
+};
+
+const getEmojiForEmotion = (emotion: string) => {
+  switch (emotion.toLowerCase()) {
+    case 'joy':
+      return '😊';
+    case 'sadness':
+      return '😢';
+    case 'anger':
+      return '😠';
+    case 'fear':
+      return '😨';
+    case 'anxiety':
+      return '😰';
+    case 'inspiration':
+      return '✨';
+    case 'stress':
+      return '😖';
+    case 'neutral':
+      return '😐';
+    default:
+      return '🤔';
+  }
+};
+
+const emotionLabels = {
+  overall: 'joy',
+  stress: 'stress',
+  inspiration: 'inspiration',
+};
 
   const weeklyChart = [32, 61, 13, 18, 29, 74, 33];
   const monthlyChart = [20, 18, 12, 35, 44, 28, 16, 37, 50, 41, 39, 27];
@@ -104,7 +182,38 @@ const rotateInterpolate = rotateAnim.interpolate({
   const handleMoodPress = (mood: Mood): void => {
     setSelectedMood(mood);
     setMoodDialogVisible(true);
+  
+    // Update today's mood in the mood history
+    setMoodHistory(prev =>
+      prev.map((entry, index) =>
+        index === todayIndex ? { ...entry, emoji: getEmojiFromLabel(mood.label) } : entry
+      )
+    );
   };
+
+  const getEmojiFromLabel = (label: string): string => {
+    switch (label.toLowerCase()) {
+      case 'happy':
+        return '😊';
+      case 'sad':
+        return '😢';
+      case 'good mood':
+        return '😁';
+      case 'annoyed':
+        return '😒';
+      case 'angry':
+        return '😡';
+      case 'tired':
+        return '😴';
+      case 'confused':
+        return '😕';
+      case 'confident':
+        return '😎';
+      default:
+        return '🤔';
+    }
+  };  
+  
 
   return (
     <View style={{ flex: 1, backgroundColor: '#EFF2FF' }}>
@@ -121,8 +230,22 @@ const rotateInterpolate = rotateAnim.interpolate({
       </View>
 
       <ScrollView contentContainerStyle={styles.container}>
-        {/* Greeting */}
-        <Text style={styles.greeting}>You're inspired lately!</Text>
+        {/* Mood History */}
+        <View style={{ marginTop: 10, paddingHorizontal: 20 , paddingBottom: 10}}>
+        <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: '#44349B' }}>
+          Mood History
+        </Text>
+
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          {moodHistory.map(({ day, emoji }, idx) => (
+            <View key={idx} style={{ alignItems: 'center' }}>
+              <Text style={{ fontSize: 24 }}>{emoji}</Text>
+              <Text style={{ fontSize: 12 }}>{day}</Text>
+            </View>
+          ))}
+
+          </View>
+        </View>
 
         {/* Avatar Analysis Title */}
         <Text style={styles.analysisTitle}>Avatar Analysis</Text>
@@ -135,61 +258,193 @@ const rotateInterpolate = rotateAnim.interpolate({
               style={styles.avatarBackgroundImage} 
             />
 
-            <View style={styles.statBoxWrapper}>
-              <View style={styles.statBox}>
-                <Image source={require('../assets/images/emoji.png')} style={styles.statEmoji} />
+          <View style={styles.statBoxWrapper}>
+            {Object.entries(stats).map(([key, value]) => (
+              <View key={key} style={styles.statBox}>
+                <Text style={[styles.statEmoji, { fontSize: 30, marginRight: 10 }]}>
+                {getEmojiForEmotion(emotionLabels[key as keyof typeof emotionLabels])}
+                </Text>
                 <View>
-                  <Text style={styles.statLabel}>Overall Stats</Text>
-                  <Text style={styles.statValue}>{stats.overall}</Text>
+                  <Text style={styles.statLabel}>
+                    {key === 'overall' ? 'Overall Stats' : key === 'stress' ? 'Stress Level' : 'Motivation Level'}
+                  </Text>
+                  <Text style={styles.statValue}>{value}</Text>
                 </View>
               </View>
-              <View style={styles.statBox}>
-                <Image source={require('../assets/images/emoji.png')} style={styles.statEmoji} />
-                <View>
-                  <Text style={styles.statLabel}>Stress Level</Text>
-                  <Text style={styles.statValue}>{stats.stress}</Text>
-                </View>
-              </View>
-              <View style={styles.statBox}>
-                <Image source={require('../assets/images/emoji.png')} style={styles.statEmoji} />
-                <View>
-                  <Text style={styles.statLabel}>Inspiration Level</Text>
-                  <Text style={styles.statValue}>{stats.inspiration}</Text>
-                </View>
-              </View>
-            </View>
+            ))}
+          </View>
+
           </View>
 
           {/* Avatar Image outside to allow overflow */}
           <View style={styles.avatarImageContainer}>
             <Image 
-              source={require('../assets/images/emotionalAvatar.png')} 
+              source={require('../assets/images/heartAvatar.png')} 
               style={styles.avatarImage} 
             />
           </View>
         </View>
 
+        {/* Journal Container */}
+        <TouchableOpacity
+          onPress={() => router.push('./journalManager')}
+          style={{
+            marginHorizontal: 20,
+            marginTop: 5,
+            borderRadius: 20,
+            backgroundColor: '#9a90ff',
+            padding: 10,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            elevation: 4,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.2,
+            shadowRadius: 4,
+          }}
+        >
+          {/* Notebook Icon */}
+          <Image
+            source={require('../assets/images/notebookIcon.png')}
+            style={{
+              width: 70,
+              height: 70,
+              marginRight: 10,
+            }}
+          />
+
+          {/* Text Content */}
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: '#fff', fontSize: 16, fontWeight: 'bold' }}>
+              View Your Journal
+            </Text>
+            <Text style={{ color: '#E0DEFF', fontSize: 12, marginTop: 2 }}>
+              Tap to explore your entries
+            </Text>
+          </View>
+
+          {/* Arrow Icon */}
+          <Ionicons name="arrow-forward-circle" size={32} color="#fff" />
+        </TouchableOpacity>
+
+
+
         {/* Mood Section Container */}
         <View style={styles.moodContainer}>
           <Text style={styles.prompt}>How are you feeling today?</Text>
-          <View style={styles.moodBar}>
-          <Image source={require('../assets/images/feelingToday.gif')} style={styles.moodGifLarge} />
-        </View>
+          
 
           {/* Horizontal Mood Scroll */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.moodList}>
-            {moods.map((mood, idx) => (
-              <TouchableOpacity key={idx} onPress={() => handleMoodPress(mood)} style={styles.moodItem}>
-                <Image source={mood.gif} style={styles.moodGif} />
-                <Text style={styles.moodLabel}>{mood.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.moodList}>
+          {moods.map((mood, idx) => (
+            <TouchableOpacity
+              key={idx}
+              onPress={() => {
+                handleMoodPress(mood);
+                setSelectedMood(mood);
+                getMoodMessageFromAI(mood.label);
+              }}
+              style={styles.moodItem}
+            >
+              <Image source={mood.gif} style={styles.moodGif} />
+              <Text style={styles.moodLabel}>{mood.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* AI Mood Message */}
+        {loadingMessage ? (
+          <Text style={{ color: '#666', marginTop: 10, marginHorizontal: 20 }}>
+            Loading supportive message...
+          </Text>
+        ) : aiMoodMessage ? (
+          <View
+            style={{
+              marginTop: 10,
+              marginHorizontal: 10,
+              padding: 18,
+              backgroundColor: '#F5F2FF',
+              borderLeftWidth: 5,
+              borderLeftColor: '#6549FE',
+              borderRadius: 14,
+              elevation: 3,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 4,
+            }}
+          >
+            <Text style={{ color: '#6549FE', fontWeight: 'bold', fontSize: 16, marginBottom: 6 }}>
+              Quote of the Day
+            </Text>
+            <Text style={{ color: '#3E3E3E', fontSize: 15, lineHeight: 22 }}>
+              {aiMoodMessage}
+            </Text>
+          </View>
+        ) : null}
+
         </View>
 
-        {/* Mood Chart */}
-        <View style={styles.chartHeader}>
-          <Text style={styles.chartTitle}>Mood Chart</Text>
+
+        
+
+      {/* Mental States Chart */}
+      <View style={[styles.emotionGraphWrapper, { backgroundColor: '#FFFFFF', padding: 20, borderRadius: 20 }]}>
+      <Text style={[styles.chartTitle, { marginBottom: 10 }]}>My Mental State Scale</Text>
+        <LineChart
+          data={{
+            labels: ['Stress', 'Anxiety', 'Motivation'],
+            datasets: [
+              {
+                data: [0.3, 0.4, 0.9],
+                strokeWidth: 3,
+              },
+            ],
+          }}
+          width={Dimensions.get('window').width - 60}
+          height={220}
+          withShadow={true}
+          withInnerLines={false}
+          withOuterLines={false}
+          withDots={true}
+          yAxisInterval={0.1}
+          chartConfig={{
+            backgroundGradientFrom: '#FFFFFF',
+            backgroundGradientTo: '#FFFFFF',
+            decimalPlaces: 2,
+            color: (opacity = 1) => `rgba(101, 73, 254, ${opacity})`,
+            labelColor: () => '#332C64',
+            propsForDots: {
+              r: '6',
+              strokeWidth: '2',
+              stroke: '#6549FE',
+              fill: '#fff',
+            },
+          }}
+          bezier
+          style={{
+            borderRadius: 50,
+          }}
+        />
+      </View>
+
+
+      {/* Enhanced Emoji Mood Radar */}
+      <View style={[styles.chartWrapperContainer, {
+          backgroundColor: '#fff',
+          borderRadius: 20,
+          padding: 20,
+          marginHorizontal: 20,
+          marginBottom: 5,
+          elevation: 4,
+          shadowColor: '#000',
+          shadowOpacity: 0.1,
+          shadowOffset: { width: 0, height: 2 },
+          shadowRadius: 6,
+        }]}>
+          <Text style={[styles.chartTitle, { marginBottom: 10 }]}>My Mood Radar</Text>
+
           <Dropdown
             style={styles.dropdownPicker}
             placeholderStyle={styles.placeholderStyle}
@@ -202,9 +457,7 @@ const rotateInterpolate = rotateAnim.interpolate({
             labelField="label"
             valueField="value"
             value={period}
-            onChange={item => {
-              setPeriod(item.value);
-            }}
+            onChange={item => setPeriod(item.value)}
             onFocus={() => toggleDropdown(true)}
             onBlur={() => toggleDropdown(false)}
             renderRightIcon={() => (
@@ -216,44 +469,132 @@ const rotateInterpolate = rotateAnim.interpolate({
             itemContainerStyle={styles.dropdownItemContainer}
             itemTextStyle={styles.dropdownItemText}
           />
+
+          <View style={{ alignItems: 'center', marginTop: 20 }}>
+            <Svg width={320} height={320}>
+              {(() => {
+                const width = 320;
+                const radius = 100;
+                const center = width / 2;
+                const labels = [
+                  { emoji: '😊', name: 'Happy' },
+                  { emoji: '😢', name: 'Sad' },
+                  { emoji: '😁', name: 'Good Mood' },
+                  { emoji: '😒', name: 'Annoyed' },
+                  { emoji: '😡', name: 'Angry' },
+                  { emoji: '😴', name: 'Tired' },
+                  { emoji: '😕', name: 'Confused' },
+                  { emoji: '😎', name: 'Confident' },
+                ];
+                const data = period === 'Weekly'
+                  ? [65, 40, 70, 35, 20, 50, 45, 60]
+                  : [50, 30, 55, 25, 15, 35, 40, 70];
+
+                const angleStep = (2 * Math.PI) / data.length;
+                const maxIndex = data.indexOf(Math.max(...data));
+                const dominant = labels[maxIndex];
+
+                const getPoint = (value: number, index: number) => {
+                  const angle = angleStep * index - Math.PI / 2;
+                  const r = (value / 100) * radius;
+                  return {
+                    x: center + r * Math.cos(angle),
+                    y: center + r * Math.sin(angle),
+                  };
+                };
+
+                const polygonPoints = data.map(getPoint);
+                const pointString = polygonPoints.map(p => `${p.x},${p.y}`).join(' ');
+
+                return (
+                  <>
+                    <Circle cx={center} cy={center} r={radius} fill="rgba(245,240,255,0.5)" />
+                    {[0.25, 0.5, 0.75, 1].map((level, i) => (
+                      <Circle
+                        key={`ring-${i}`}
+                        cx={center}
+                        cy={center}
+                        r={radius * level}
+                        stroke="#eee"
+                        strokeWidth={1}
+                        fill="none"
+                      />
+                    ))}
+                    {data.map((_, i) => {
+                      const angle = angleStep * i - Math.PI / 2;
+                      return (
+                        <Line
+                          key={`line-${i}`}
+                          x1={center}
+                          y1={center}
+                          x2={center + radius * Math.cos(angle)}
+                          y2={center + radius * Math.sin(angle)}
+                          stroke="#ccc"
+                          strokeDasharray="4"
+                        />
+                      );
+                    })}
+                    <Polygon
+                      points={pointString}
+                      fill="rgba(101, 73, 254, 0.3)"
+                      stroke="#6549FE"
+                      strokeWidth={2}
+                    />
+                    {labels.map((item, i) => {
+                      const angle = angleStep * i - Math.PI / 2;
+                      const x = center + (radius + 24) * Math.cos(angle);
+                      const y = center + (radius + 24) * Math.sin(angle);
+                      return (
+                        <React.Fragment key={i}>
+                          <SvgText
+                            x={x}
+                            y={y - 12}
+                            fontSize="20"
+                            textAnchor="middle"
+                            alignmentBaseline="middle"
+                          >
+                            {item.emoji}
+                          </SvgText>
+                          <SvgText
+                            x={x}
+                            y={y + 10}
+                            fontSize="12"
+                            fill="#444"
+                            textAnchor="middle"
+                            alignmentBaseline="middle"
+                          >
+                            {item.name}
+                          </SvgText>
+                        </React.Fragment>
+                      );
+                    })}
+                  </>
+                );
+              })()}
+            </Svg>
+
+            {/* Dominant Mood */}
+            <View style={{ marginTop: 10, alignItems: 'center' }}>
+              <Text style={{ fontSize: 14, color: '#888' }}>Dominant Mood</Text>
+              <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#6549FE' }}>
+                {(() => {
+                  const labels = [
+                    'Happy', 'Sad', 'Good Mood', 'Annoyed',
+                    'Angry', 'Tired', 'Confused', 'Confident'
+                  ];
+                  const data = period === 'Weekly'
+                    ? [65, 40, 70, 35, 20, 50, 45, 60]
+                    : [50, 30, 55, 25, 15, 35, 40, 70];
+                  const maxIndex = data.indexOf(Math.max(...data));
+                  return labels[maxIndex];
+                })()}
+              </Text>
+            </View>
+          </View>
         </View>
 
-        <View style={styles.chartWrapperContainer}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.chartContainer}
-          >
-            {(period === 'Weekly' ? weeklyChart : monthlyChart).map((val: number, index: number) => {
-              const moodIndex = index % moods.length;
-              const colors = moodColors[moodIndex];
-              const percentage = val; // Assuming val is already a percentage
 
-              return (
-                <View key={index} style={styles.chartBarWrapper}>
-                  <Text style={styles.barLabel}>{percentage}%</Text>
 
-                  <Image
-                    source={moodEmojis[moodIndex] ?? moodEmojis[0]}
-                    style={styles.chartEmoji}
-                  />
-
-                  <View style={{ height: 5 }} />
-
-                  <View style={[styles.chartBarOuter, { borderColor: colors.background }]}>
-                    <View style={[styles.chartBarInner, { height: `${percentage}%`, backgroundColor: colors.fill }]} />
-                  </View>
-
-                  <Text style={styles.barDay}>
-                    {period === 'Weekly'
-                      ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][index]
-                      : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][index]}
-                  </Text>
-                </View>
-              );
-            })}
-          </ScrollView>
-        </View>
 
         {/* Recommendations */}
         <Text style={styles.recommendationTitle}>Recommendation</Text>
@@ -298,7 +639,7 @@ const rotateInterpolate = rotateAnim.interpolate({
 
           {/* Description */}
           <Text style={styles.dialogDescription}>
-            {selectedMood?.label && moodMessages[selectedMood.label]}
+            {selectedMood?.label && aiMoodMessage }
           </Text>
 
           {/* OK Button */}
@@ -411,9 +752,9 @@ const styles = StyleSheet.create({
   statValue: { color: '#FFA500', fontSize: 16, fontWeight: 'bold' },
   avatarImage: {
     position: 'absolute',
-    width: 215, // make it wider
-    height: 300, // make it taller
-    right: -30, // shift more to the right
+    width: 190, // make it wider
+    height: 280, // make it taller
+    right: -15, // shift more to the right
     bottom: -16, // shift more downward
     resizeMode: 'contain',
     zIndex: 2,
@@ -429,7 +770,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     zIndex: 2,
   },  
-  prompt: { fontSize: 18, color: '#6549FE', fontWeight: 'medium', paddingHorizontal: 20, alignSelf: 'center' },
+  prompt: { fontSize: 18, color: '#44349B', fontWeight: 'medium', paddingHorizontal: 20, alignSelf: 'center' },
   moodBar: {
     width: '90%',
     height: 60,
@@ -562,6 +903,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
     lineHeight: 20,
   },
+  graphTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  
+  emotionGraphWrapper: {
+    marginHorizontal: 20,
+    marginTop: 20,
+  },  
   
   okButton: {
     backgroundColor: '#6549FE',
@@ -588,7 +940,7 @@ const styles = StyleSheet.create({
   },  
   dialogText: { color: '#333', fontSize: 16 },
   analysisTitle: {
-    fontSize: 20,
+    fontSize: 18,
     color: '#44349B',
     fontWeight: 'bold',
     paddingHorizontal: 22,
@@ -605,6 +957,35 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 5,
     elevation: 4,
+  },
+  moodHistoryContainer: {
+    marginTop: 10,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+  },
+  moodHistoryTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#332C64',
+    marginBottom: 8,
+  },
+  moodHistoryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  moodColumn: {
+    alignItems: 'center',
+  },
+  emoji: {
+    fontSize: 24,
+  },
+  day: {
+    fontSize: 10,
+    color: '#332C64',
+    marginTop: 2,
   },  
   chartWrapperContainer: {
     backgroundColor: '#fff',
