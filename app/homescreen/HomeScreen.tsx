@@ -230,6 +230,7 @@ export default function HomeScreen() {
             <style>
               html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #fff; }
               model-viewer { width: 100%; height: 100%; }
+              .text-content { display: none; } /* Hide any text content */
             </style>
           </head>
           <body>

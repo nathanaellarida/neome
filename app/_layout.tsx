@@ -5,6 +5,7 @@ import { TaskProvider } from '../contexts/TaskContext';
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'expo-router';
 import FloatingChatbot from './chatbot/FloatingChatbot';
+import { View } from 'react-native';
 
 export default function Layout() {
   const router = useRouter();
@@ -21,13 +22,13 @@ export default function Layout() {
     <FolderProvider>
       <TaskProvider>
         <SafeAreaView style={{ flex: 1 }}>
-          <Stack screenOptions={{ 
-            headerShown: false, 
-            animation: 'fade' 
-          }} />
-          {pathname !== '/chatbot/App' && <FloatingChatbot />}
-            animation: 'none' 
-              
+          <View style={{ flex: 1 }}>
+            <Stack screenOptions={{ 
+              headerShown: false, 
+              animation: 'fade' 
+            }} />
+            {pathname !== '/chatbot/App' && <FloatingChatbot />}
+          </View>
         </SafeAreaView>
       </TaskProvider>
     </FolderProvider>

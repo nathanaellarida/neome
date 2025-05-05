@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Dimensions,
+  View,
 } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { Image } from 'expo-image';
@@ -85,8 +86,8 @@ export default function FloatingChatbot() {
     try {
       const sound = soundRef.current;
       if (sound) {
-        await sound.stopAsync(); // Ensure sound starts clean
-        await sound.playFromPositionAsync(0); // No delay, plays from start
+        await sound.stopAsync();
+        await sound.playFromPositionAsync(0);
       }
     } catch (error) {
       console.warn('Failed to play sound', error);
@@ -129,7 +130,7 @@ export default function FloatingChatbot() {
   ).current;
 
   if (excludedRoutes.includes(pathname)) {
-    return <></>;
+    return null;
   }
 
   return (
@@ -146,14 +147,16 @@ export default function FloatingChatbot() {
       <TouchableOpacity
         onPress={async () => {
           resetHideTimer();
-          await playTapSound(); // ✅ Improved smooth playback
+          await playTapSound();
           router.push('/chatbot/App');
         }}
       >
-        <Image
-          source={require('../assets/images/whitebot.gif')}
-          style={styles.iconImage}
-        />
+        <View style={styles.iconContainer}>
+          <Image
+            source={require('../assets/images/whitebot.gif')}
+            style={styles.iconImage}
+          />
+        </View>
       </TouchableOpacity>
     </Animated.View>
   );
@@ -167,9 +170,15 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     elevation: 10,
   },
+  iconContainer: {
+    width: ICON_SIZE,
+    height: ICON_SIZE,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   iconImage: {
-    width: 60,
-    height: 60,
+    width: ICON_SIZE,
+    height: ICON_SIZE,
     resizeMode: 'contain',
     borderRadius: 30,
   },
