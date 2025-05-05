@@ -1,21 +1,57 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { Audio } from 'expo-av';
 
 export default function NotificationScreen() {
   const router = useRouter();
+  const soundRef = useRef<Audio.Sound | null>(null);
 
   const handleMarkAllAsRead = () => {
     // Add your mark all as read logic here
     console.log("All notifications marked as read");
   };
 
+  useEffect(() => {
+  
+      const loadSound = async () => {
+        const { sound } = await Audio.Sound.createAsync(
+          require('../assets/images/tap.wav'),
+          { shouldPlay: false }
+        );
+        soundRef.current = sound;
+      };
+  
+      loadSound();
+  
+      return () => {
+        if (soundRef.current) {
+          soundRef.current.unloadAsync();
+        }
+      };
+    }, []);
+  
+    const playTapSound = async () => {
+      try {
+        const sound = soundRef.current;
+        if (sound) {
+          await sound.stopAsync(); // Ensure sound starts clean
+          await sound.playFromPositionAsync(0); // No delay, plays from start
+        }
+      } catch (error) {
+        console.warn('Failed to play sound', error);
+      }
+    };
+
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={async() => {
+          await playTapSound();
+          router.back();
+        } }>
           <Ionicons name="arrow-back-outline" size={22} color="#6549FE" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notifications</Text>

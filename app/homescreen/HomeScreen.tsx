@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ScrollView, StyleSheet, View, Text, TouchableOpacity, Dimensions, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
@@ -9,8 +9,7 @@ import { auth, db, storage } from '../../firebaseConfig';
 import { doc, updateDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { getDownloadURL, ref } from 'firebase/storage';
 import Svg, { Circle, Text as SvgText } from 'react-native-svg';
-
-
+import { Audio } from 'expo-av';
 
 export default function HomeScreen() {
   const today = new Date();
@@ -19,6 +18,7 @@ export default function HomeScreen() {
   const [userName, setUserName] = useState('');
   const [profileImageUrl, setProfileImageUrl] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+    const soundRef = useRef<Audio.Sound | null>(null);
 
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -92,6 +92,37 @@ export default function HomeScreen() {
     return () => clearInterval(intervalId);
   }, []);
 
+  useEffect(() => {
+  
+      const loadSound = async () => {
+        const { sound } = await Audio.Sound.createAsync(
+          require('../assets/images/tap.wav'),
+          { shouldPlay: false }
+        );
+        soundRef.current = sound;
+      };
+  
+      loadSound();
+  
+      return () => {
+        if (soundRef.current) {
+          soundRef.current.unloadAsync();
+        }
+      };
+    }, []);
+  
+    const playTapSound = async () => {
+      try {
+        const sound = soundRef.current;
+        if (sound) {
+          await sound.stopAsync(); // Ensure sound starts clean
+          await sound.playFromPositionAsync(0); // No delay, plays from start
+        }
+      } catch (error) {
+        console.warn('Failed to play sound', error);
+      }
+    };
+
   return (
     <View style={styles.container}>
       {/* White Header Container */}
@@ -111,14 +142,22 @@ export default function HomeScreen() {
 
           {/* Icons */}
           <View style={styles.iconContainer}>
-            <TouchableOpacity
-            onPress={() => router.push("/settings/notification")}>
-              <Ionicons name="notifications-outline" size={23} color="#6549FE" />
-            </TouchableOpacity>
-            <TouchableOpacity
-            onPress={() => router.push("/settings/settingDashboard")}>
+          
+          <TouchableOpacity
+            onPress={async () => {
+              await playTapSound();
+              router.push("/settings/notification");
+            }}
+          >
+            <Ionicons name="notifications-outline" size={23} color="#6549FE" />
+          </TouchableOpacity>
+          <TouchableOpacity
+              onPress={async () => {
+                await playTapSound();
+                router.push("/settings/settingDashboard");
+              }}
+            >
               <Ionicons name="menu-outline" size={28} color="#6549FE" />
-
             </TouchableOpacity>
           </View>
         </View>
@@ -297,7 +336,10 @@ export default function HomeScreen() {
               <TouchableOpacity 
                 key={index} 
                 style={styles.categoryButton} 
-                onPress={() => router.push(category.screen as any)}>
+                onPress={async() => {
+                  await playTapSound();
+                  router.push(category.screen as any);
+                }}>
                 <Image source={category.image} style={styles.categoryImage} />
                 <View style={styles.categoryTextContainer}>
                   <Text style={styles.categoryText}>{category.title}</Text>
@@ -445,7 +487,10 @@ export default function HomeScreen() {
 
           {/* Single Button */}
           <View style={styles.viewButtonContainer}>
-            <TouchableOpacity style={styles.viewButton} onPress={() => router.push('../leaderboard/overallLeaderboard')}>
+            <TouchableOpacity style={styles.viewButton} onPress={async() => {
+              await playTapSound();
+              router.push('../leaderboard/overallLeaderboard');
+              }}>
               <Text style={styles.challengeButtonText}>View</Text>
             </TouchableOpacity>
           </View>
@@ -617,13 +662,18 @@ export default function HomeScreen() {
         {/* Increased spacing for Statistics */}
         <TouchableOpacity
           style={[styles.navButton, { marginRight: 30 }]}
-          onPress={() => router.push('/chatbot/App')}
+          onPress={async() => {
+            await playTapSound();
+          }}
         >
           <Ionicons name="bar-chart-outline" size={25} color="#6549FE" />
         </TouchableOpacity>
 
         {/* Center Profile Button */}
-        <TouchableOpacity style={styles.centerCircle} onPress={() => router.push('/avatar_progress/AvatarProgressScreen')}>
+        <TouchableOpacity style={styles.centerCircle} onPress={async() =>{
+          await playTapSound();
+          router.push('/avatar_progress/AvatarProgressScreen');
+        } }>
           <Ionicons name="person" size={32} color="#FFFFFF" />
         </TouchableOpacity>
 
@@ -632,7 +682,10 @@ export default function HomeScreen() {
           <Ionicons name="book-outline" size={25} color="#6549FE" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navButton} onPress={() => router.push('/messaging/MessageHome')}>
+        <TouchableOpacity style={styles.navButton} onPress={async() =>{
+          await playTapSound();
+          router.push('/messaging/MessageHome');
+        } }>
           <Ionicons name="chatbubble-ellipses-outline" size={25} color="#6549FE" />
         </TouchableOpacity>
       </View>

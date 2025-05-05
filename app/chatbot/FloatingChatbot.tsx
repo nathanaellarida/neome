@@ -4,10 +4,11 @@ import {
   PanResponder,
   TouchableOpacity,
   StyleSheet,
-  Dimensions
+  Dimensions,
 } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { Image } from 'expo-image';
+import { Audio } from 'expo-av';
 
 const { width, height } = Dimensions.get('window');
 const ICON_SIZE = 60;
@@ -16,6 +17,7 @@ const SIDE_PADDING = 20;
 export default function FloatingChatbot() {
   const router = useRouter();
   const pathname = usePathname();
+  const soundRef = useRef<Audio.Sound | null>(null);
 
   const translateX = useRef(new Animated.Value(width - ICON_SIZE - SIDE_PADDING)).current;
   const translateY = useRef(new Animated.Value(100)).current;
@@ -51,7 +53,7 @@ export default function FloatingChatbot() {
 
     hideTimeout.current = setTimeout(() => {
       Animated.timing(opacity, {
-        toValue: 0.3,
+        toValue: 0.1,
         duration: 300,
         useNativeDriver: true,
       }).start();
@@ -60,10 +62,36 @@ export default function FloatingChatbot() {
 
   useEffect(() => {
     resetHideTimer();
+
+    const loadSound = async () => {
+      const { sound } = await Audio.Sound.createAsync(
+        require('../assets/images/tap.wav'),
+        { shouldPlay: false }
+      );
+      soundRef.current = sound;
+    };
+
+    loadSound();
+
     return () => {
       if (hideTimeout.current) clearTimeout(hideTimeout.current);
+      if (soundRef.current) {
+        soundRef.current.unloadAsync();
+      }
     };
   }, []);
+
+  const playTapSound = async () => {
+    try {
+      const sound = soundRef.current;
+      if (sound) {
+        await sound.stopAsync(); // Ensure sound starts clean
+        await sound.playFromPositionAsync(0); // No delay, plays from start
+      }
+    } catch (error) {
+      console.warn('Failed to play sound', error);
+    }
+  };
 
   const panResponder = useRef(
     PanResponder.create({
@@ -77,7 +105,6 @@ export default function FloatingChatbot() {
       onPanResponderRelease: (_, gesture) => {
         const isLeft = gesture.moveX < width / 2;
         const snapToX = isLeft ? SIDE_PADDING : width - ICON_SIZE - SIDE_PADDING;
-
         const snapToY = Math.min(
           Math.max(gesture.moveY - ICON_SIZE / 2, SIDE_PADDING),
           height - ICON_SIZE - SIDE_PADDING
@@ -101,7 +128,6 @@ export default function FloatingChatbot() {
     })
   ).current;
 
-  // ✅ Render nothing if on excluded screen
   if (excludedRoutes.includes(pathname)) {
     return <></>;
   }
@@ -117,12 +143,15 @@ export default function FloatingChatbot() {
       ]}
       {...panResponder.panHandlers}
     >
-      <TouchableOpacity onPress={() => {
-        resetHideTimer();
-        router.push('/chatbot/App');
-      }}>
+      <TouchableOpacity
+        onPress={async () => {
+          resetHideTimer();
+          await playTapSound(); // ✅ Improved smooth playback
+          router.push('/chatbot/App');
+        }}
+      >
         <Image
-          source={require('../assets/images/chatbot.gif')}
+          source={require('../assets/images/whitebot.gif')}
           style={styles.iconImage}
         />
       </TouchableOpacity>
