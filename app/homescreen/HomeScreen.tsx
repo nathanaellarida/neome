@@ -6,7 +6,7 @@ import { WebView } from 'react-native-webview';
 //import Svg, { Circle } from 'react-native-svg';
 import { router } from 'expo-router';
 import { auth, db, storage } from '../../firebaseConfig';
-import { doc, updateDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp, getDoc, collection, query, onSnapshot, where } from 'firebase/firestore';
 import { getDownloadURL, ref } from 'firebase/storage';
 import Svg, { Circle, Text as SvgText } from 'react-native-svg';
 import { Audio } from 'expo-av';
@@ -18,7 +18,12 @@ export default function HomeScreen() {
   const [userName, setUserName] = useState('');
   const [profileImageUrl, setProfileImageUrl] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+<<<<<<< HEAD
+  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
+  const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
+=======
     const soundRef = useRef<Audio.Sound | null>(null);
+>>>>>>> dd14cd2f24cd9f5575c7d75e7811975f8596adad
 
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -93,6 +98,34 @@ export default function HomeScreen() {
   }, []);
 
   useEffect(() => {
+<<<<<<< HEAD
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+    const notificationsRef = collection(db, 'users', currentUser.uid, 'notifications');
+    const q = query(notificationsRef, where('read', '==', false));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setHasUnreadNotifications(snapshot.size > 0);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+    const q = query(collection(db, 'chats'), where('users', 'array-contains', currentUser.uid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      let hasUnread = false;
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.unreadCounts && data.unreadCounts[currentUser.uid] > 0) {
+          hasUnread = true;
+        }
+      });
+      setHasUnreadMessages(hasUnread);
+    });
+    return () => unsubscribe();
+  }, []);
+=======
   
       const loadSound = async () => {
         const { sound } = await Audio.Sound.createAsync(
@@ -122,6 +155,7 @@ export default function HomeScreen() {
         console.warn('Failed to play sound', error);
       }
     };
+>>>>>>> dd14cd2f24cd9f5575c7d75e7811975f8596adad
 
   return (
     <View style={styles.container}>
@@ -142,6 +176,17 @@ export default function HomeScreen() {
 
           {/* Icons */}
           <View style={styles.iconContainer}>
+<<<<<<< HEAD
+            <TouchableOpacity onPress={() => router.push('/notifications/notificationsDashboard')}>
+              <View>
+                <Ionicons name="notifications-outline" size={23} color="#6549FE" />
+                {hasUnreadNotifications && (
+                  <View style={styles.redDot} />
+                )}
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity>
+=======
           
           <TouchableOpacity
             onPress={async () => {
@@ -157,6 +202,7 @@ export default function HomeScreen() {
                 router.push("/settings/settingDashboard");
               }}
             >
+>>>>>>> dd14cd2f24cd9f5575c7d75e7811975f8596adad
               <Ionicons name="menu-outline" size={28} color="#6549FE" />
             </TouchableOpacity>
           </View>
@@ -682,11 +728,21 @@ export default function HomeScreen() {
           <Ionicons name="book-outline" size={25} color="#6549FE" />
         </TouchableOpacity>
 
+<<<<<<< HEAD
+        <TouchableOpacity style={styles.navButton} onPress={() => router.push('/messaging/MessageHome')}>
+          <View>
+            <Ionicons name="chatbubble-ellipses-outline" size={25} color="#6549FE" />
+            {hasUnreadMessages && (
+              <View style={styles.redDot} />
+            )}
+          </View>
+=======
         <TouchableOpacity style={styles.navButton} onPress={async() =>{
           await playTapSound();
           router.push('/messaging/MessageHome');
         } }>
           <Ionicons name="chatbubble-ellipses-outline" size={25} color="#6549FE" />
+>>>>>>> dd14cd2f24cd9f5575c7d75e7811975f8596adad
         </TouchableOpacity>
       </View>
     </View>
@@ -1208,5 +1264,15 @@ const styles = StyleSheet.create({
     elevation: 2,
     position: 'absolute', 
     right: 20,
+  },
+  redDot: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#FF4B4B',
+    zIndex: 10,
   },
 });

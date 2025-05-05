@@ -6,37 +6,307 @@ import {
   TouchableOpacity,
   ImageBackground,
   Modal,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
+import { doc, onSnapshot, updateDoc, serverTimestamp, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '../../firebaseConfig';
+import { getAuth } from 'firebase/auth';
+import { Audio } from 'expo-av';
+
+function calculateChallengePoints(totalMinutes: number, completedMinutes: number): number {
+  const maxPoints = totalMinutes * 2;
+  const percent = completedMinutes / totalMinutes;
+  let tier = 0;
+  if (percent >= 1) tier = 1;
+  else if (percent >= 0.8) tier = 0.8;
+  else if (percent >= 0.7) tier = 0.7;
+  else if (percent >= 0.5) tier = 0.5;
+  else if (percent >= 0.3) tier = 0.3;
+  else if (percent >= 0.25) tier = 0.25;
+  else tier = 0;
+  const points = maxPoints * tier;
+  return Math.round(points * 10) / 10;
+}
 
 const ChallengeTimerScreen: React.FC = () => {
-  const { challengeTitle, duration } = useLocalSearchParams<{
+  const { challengeTitle, duration, challengeId, participants, ownerId } = useLocalSearchParams<{
     challengeTitle: string;
     duration: string;
+    challengeId: string;
+    participants: string;
+    ownerId: string;
   }>();
 
   const parsedDuration = parseInt(duration || '0');
-
   const [timeLeft, setTimeLeft] = useState(parsedDuration * 60);
+  const [originalTime, setOriginalTime] = useState(parsedDuration * 60);
   const [isActive, setIsActive] = useState(true);
-
   const [showPauseModal, setShowPauseModal] = useState(false);
   const [showStopConfirmModal, setShowStopConfirmModal] = useState(false);
   const [showStopSuccessModal, setShowStopSuccessModal] = useState(false);
+  const [isHost, setIsHost] = useState(false);
+  const [lastUpdateTime, setLastUpdateTime] = useState(Date.now());
+  const [showParticipantPausedModal, setShowParticipantPausedModal] = useState(false);
+  const [pausedByUser, setPausedByUser] = useState('');
+  const [isCallActive, setIsCallActive] = useState(false);
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
+
+  // Calculate pointsText based on Firestore originalTime and timeLeft
+  const totalMinutes = originalTime / 60;
+  const completedMinutes = (originalTime - timeLeft) / 60;
+  const pointsText = `${calculateChallengePoints(totalMinutes, completedMinutes)} Points`;
+
+  // Initialize shared challenge document
+  useEffect(() => {
+    const initializeSharedChallenge = async () => {
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+      if (!currentUser || !challengeId) return;
+
+      const sharedChallengeRef = doc(db, 'shared_challenges', challengeId);
+      
+      try {
+        // Try to get the shared challenge document
+        const sharedDoc = await getDoc(sharedChallengeRef);
+        
+        // If it doesn't exist, create it
+        if (!sharedDoc.exists()) {
+          await setDoc(sharedChallengeRef, {
+            timeLeft: parsedDuration * 60,
+            originalTime: parsedDuration * 60,
+            timerState: 'running',
+            lastUpdated: serverTimestamp(),
+            participants: JSON.parse(participants || '[]'),
+            ownerId: ownerId,
+            challengeTitle: challengeTitle
+          });
+        }
+      } catch (error) {
+        console.error('Error initializing shared challenge:', error);
+      }
+    };
+
+    initializeSharedChallenge();
+  }, [challengeId, ownerId, parsedDuration, participants, challengeTitle]);
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (isActive && timeLeft > 0) {
-      timer = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+    if (!currentUser || !challengeId) {
+      console.log('Missing required data:', { currentUser, challengeId });
+      return;
     }
-    return () => clearInterval(timer);
-  }, [isActive, timeLeft]);
+
+    // Check if current user is the host
+    const isUserHost = currentUser.uid === ownerId;
+    setIsHost(isUserHost);
+
+    // Set up real-time listener for the shared challenge
+    const sharedChallengeRef = doc(db, 'shared_challenges', challengeId);
+    const unsubscribe = onSnapshot(sharedChallengeRef, (doc) => {
+      const data = doc.data();
+      console.log('Timer update from Firestore:', data);
+      if (data) {
+        setTimeLeft(data.timeLeft);
+        if (data.originalTime) setOriginalTime(data.originalTime);
+        const isPaused = data.timerState === 'paused' || !!data.pausedBy;
+        setIsActive(!isPaused);
+
+        if (data.lastUpdated) {
+          setLastUpdateTime(data.lastUpdated.toMillis());
+        }
+
+        // Handle pause notifications
+        if (data.pausedBy && data.pausedBy.id !== currentUser.uid) {
+          setPausedByUser(data.pausedBy.name);
+          setShowParticipantPausedModal(true);
+        } else if (!data.pausedBy) {
+          // Close the participant paused modal when timer is resumed
+          setShowParticipantPausedModal(false);
+          setPausedByUser('');
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, [challengeId, ownerId]);
+
+  // Update the timer effect to sync with Firebase
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    
+    // Only run timer if active and no one has paused
+    if (isActive && timeLeft > 0) {
+      console.log('Starting timer:', { isActive, timeLeft });
+      timer = setInterval(async () => {
+        try {
+          const sharedChallengeRef = doc(db, 'shared_challenges', challengeId);
+          
+          // Check current state before updating
+          const snapshot = await getDoc(sharedChallengeRef);
+          const data = snapshot.data();
+          
+          // Only update if the timer is still running and no one has paused
+          if (data && data.timerState === 'running' && !data.pausedBy) {
+            const newTimeLeft = timeLeft - 1;
+            setTimeLeft(newTimeLeft);
+            
+            // Only update Firebase if we're the host
+            if (isHost) {
+              await updateDoc(sharedChallengeRef, {
+                timeLeft: newTimeLeft,
+                timerState: 'running',
+                lastUpdated: serverTimestamp()
+              });
+            }
+          } else {
+            // If someone paused, clear the interval
+            clearInterval(timer);
+          }
+        } catch (error) {
+          console.error('Error updating timer:', error);
+          clearInterval(timer);
+        }
+      }, 1000);
+    }
+
+    return () => {
+      if (timer) {
+        clearInterval(timer);
+      }
+    };
+  }, [isActive, timeLeft, isHost, challengeId]);
+
+  useEffect(() => {
+    // Request audio permissions
+    const getPermissions = async () => {
+      await Audio.requestPermissionsAsync();
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: true,
+        shouldDuckAndroid: true,
+      });
+    };
+
+    getPermissions();
+
+    // Cleanup
+    return () => {
+      if (recording) {
+        recording.stopAndUnloadAsync();
+      }
+      if (sound) {
+        sound.unloadAsync();
+      }
+    };
+  }, []);
 
   const formatTime = () => {
     const min = Math.floor(timeLeft / 60);
     const sec = timeLeft % 60;
     return `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+  };
+
+  const handlePause = async () => {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
+    const sharedChallengeRef = doc(db, 'shared_challenges', challengeId);
+    try {
+      await updateDoc(sharedChallengeRef, {
+        timerState: 'paused',
+        timeLeft: timeLeft,
+        lastUpdated: serverTimestamp(),
+        pausedBy: {
+          id: currentUser.uid,
+          name: currentUser.displayName || 'A participant'
+        }
+      });
+      setIsActive(false);
+      setShowPauseModal(true);
+    } catch (error) {
+      console.error('Error pausing timer:', error);
+    }
+  };
+
+  const handleResume = async () => {
+    const sharedChallengeRef = doc(db, 'shared_challenges', challengeId);
+    try {
+      await updateDoc(sharedChallengeRef, {
+        timerState: 'running',
+        timeLeft: timeLeft,
+        lastUpdated: serverTimestamp(),
+        pausedBy: null // Clear the pausedBy field when resuming
+      });
+      setIsActive(true);
+      setShowPauseModal(false);
+      // No need to set showParticipantPausedModal here as it will be handled by the Firestore listener
+    } catch (error) {
+      console.error('Error resuming timer:', error);
+    }
+  };
+
+  const handleStop = async () => {
+    const sharedChallengeRef = doc(db, 'shared_challenges', challengeId);
+    try {
+      await updateDoc(sharedChallengeRef, {
+        timerState: 'stopped',
+        timeLeft: timeLeft,
+        lastUpdated: serverTimestamp()
+      });
+      setIsActive(false);
+      setShowStopConfirmModal(false);
+      setShowStopSuccessModal(true);
+    } catch (error) {
+      console.error('Error stopping timer:', error);
+    }
+  };
+
+  const startCall = async () => {
+    try {
+      const recordingObject = new Audio.Recording();
+      await recordingObject.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+      await recordingObject.startAsync();
+      setRecording(recordingObject);
+      setIsCallActive(true);
+
+      // Update Firestore to indicate user is in a call
+      const sharedChallengeRef = doc(db, 'shared_challenges', challengeId);
+      await updateDoc(sharedChallengeRef, {
+        callActive: true,
+        lastUpdated: serverTimestamp()
+      });
+    } catch (error) {
+      console.error('Error starting call:', error);
+    }
+  };
+
+  const endCall = async () => {
+    try {
+      if (recording) {
+        await recording.stopAndUnloadAsync();
+        setRecording(null);
+      }
+      if (sound) {
+        await sound.unloadAsync();
+        setSound(null);
+      }
+      setIsCallActive(false);
+
+      // Update Firestore to indicate call has ended
+      const sharedChallengeRef = doc(db, 'shared_challenges', challengeId);
+      await updateDoc(sharedChallengeRef, {
+        callActive: false,
+        lastUpdated: serverTimestamp()
+      });
+    } catch (error) {
+      console.error('Error ending call:', error);
+    }
   };
 
   return (
@@ -57,7 +327,16 @@ const ChallengeTimerScreen: React.FC = () => {
         source={require('../assets/images/challenges/timerBackground.png')}
         style={styles.upperContainer}
         resizeMode="cover"
-      />
+      >
+        {/* Points System UI - overlayed */}
+        <View style={styles.pointsContainer}>
+          <Image
+            source={require('../assets/images/points.png')}
+            style={styles.pointsIcon}
+          />
+          <Text style={styles.pointsText}>{pointsText}</Text>
+        </View>
+      </ImageBackground>
 
       {/* LOWER CONTAINER */}
       <View style={styles.lowerContainer}>
@@ -67,22 +346,31 @@ const ChallengeTimerScreen: React.FC = () => {
 
         <TouchableOpacity
           style={styles.primaryBtn}
-          onPress={() => {
-            setIsActive(false);
-            setShowPauseModal(true);
-          }}
+          onPress={handlePause}
         >
           <Text style={styles.btnText}>Pause</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.secondaryBtn}
-          onPress={() => {
-            setIsActive(false);
-            setShowStopConfirmModal(true);
-          }}
+          onPress={() => setShowStopConfirmModal(true)}
         >
           <Text style={styles.secondaryText}>Stop</Text>
+        </TouchableOpacity>
+
+        {/* Voice Call Button */}
+        <TouchableOpacity
+          style={[styles.voiceCallBtn, isCallActive && styles.voiceCallBtnActive]}
+          onPress={isCallActive ? endCall : startCall}
+        >
+          <Ionicons 
+            name={isCallActive ? "mic" : "mic-outline"} 
+            size={24} 
+            color={isCallActive ? "#fff" : "#6549FE"} 
+          />
+          <Text style={[styles.voiceCallText, isCallActive && styles.voiceCallTextActive]}>
+            {isCallActive ? "End Voice" : "Start Voice"}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -94,10 +382,7 @@ const ChallengeTimerScreen: React.FC = () => {
             <Text style={styles.modalTitle}>Challenge Paused</Text>
             <TouchableOpacity
               style={[styles.modalPrimaryBtn, { marginTop: 35 }]}
-              onPress={() => {
-                setShowPauseModal(false);
-                setIsActive(true);
-              }}
+              onPress={handleResume}
             >
               <Text style={styles.btnText}>Resume</Text>
             </TouchableOpacity>
@@ -114,10 +399,7 @@ const ChallengeTimerScreen: React.FC = () => {
             <Text style={styles.modalSubtitle}>Your current points will be your final points</Text>
             <TouchableOpacity
               style={styles.modalPrimaryBtn}
-              onPress={() => {
-                setShowStopConfirmModal(false);
-                setShowStopSuccessModal(true);
-              }}
+              onPress={handleStop}
             >
               <Text style={styles.btnText}>Stop</Text>
             </TouchableOpacity>
@@ -142,18 +424,19 @@ const ChallengeTimerScreen: React.FC = () => {
             <Text style={styles.modalTitle}>Successfully stopped the challenge</Text>
             <Text style={styles.modalSubtitle}>Your current points will be your final points</Text>
             
-            {/* ✅ Confirm Button navigates to Leaderboard */}
             <TouchableOpacity
               style={styles.modalPrimaryBtn}
               onPress={() => {
                 setShowStopSuccessModal(false);
-                router.push('/Challenges/Points'); // 👈 Add your route here
+                router.push({
+                  pathname: '/Challenges/SuccessPoints',
+                  params: { points: calculateChallengePoints(originalTime / 60, (originalTime - timeLeft) / 60).toString() }
+                });
               }}
             >
               <Text style={styles.btnText}>Confirm</Text>
             </TouchableOpacity>
 
-            {/* Back Button */}
             <TouchableOpacity
               style={styles.modalSecondaryBtn}
               onPress={() => {
@@ -162,6 +445,22 @@ const ChallengeTimerScreen: React.FC = () => {
               }}
             >
               <Text style={styles.secondaryText}>Back</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Participant Paused Modal */}
+      <Modal visible={showParticipantPausedModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Ionicons name="pause-circle-outline" size={90} color="#6549FE" style={{ marginBottom: 5 }} />
+            <Text style={styles.modalTitle}>{pausedByUser} paused the challenge</Text>
+            <TouchableOpacity
+              style={[styles.modalPrimaryBtn, { marginTop: 35 }]}
+              onPress={() => setShowParticipantPausedModal(false)}
+            >
+              <Text style={styles.btnText}>OK</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -319,4 +618,55 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   
+  voiceCallBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#6549FE',
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    borderRadius: 40,
+    width: '80%',
+    marginTop: 10,
+  },
+  voiceCallBtnActive: {
+    backgroundColor: '#6549FE',
+  },
+  voiceCallText: {
+    color: '#6549FE',
+    fontWeight: 'bold',
+    fontSize: 16,
+    marginLeft: 8,
+  },
+  voiceCallTextActive: {
+    color: '#fff',
+  },
+  pointsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    position: 'absolute',
+    top: 18,
+    left: 18,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+    zIndex: 10,
+  },
+  pointsIcon: {
+    width: 28,
+    height: 28,
+    marginRight: 8,
+    resizeMode: 'contain',
+  },
+  pointsText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFA836',
+  },
 });

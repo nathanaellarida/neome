@@ -6,31 +6,83 @@ import {
     ImageBackground,
     ScrollView,
     TouchableOpacity,
+    ActivityIndicator,
   } from 'react-native';
   import { useLocalSearchParams, router } from 'expo-router';
+  import { auth, db, storage } from '../../firebaseConfig';
+  import { doc, getDoc } from 'firebase/firestore';
+  import { getDownloadURL, ref } from 'firebase/storage';
+  import { useState, useEffect } from 'react';
   
-  const avatarMap: Record<string, any> = {
-    'ramsey@example.com': require('../assets/images/leaderboard/ramsey.png'),
-    'mary@example.com': require('../assets/images/leaderboard/mary.png'),
-    'kyla@example.com': require('../assets/images/leaderboard/kyla.png'),
-    'jacob@example.com': require('../assets/images/leaderboard/jacob.png'),
-    'perry@example.com': require('../assets/images/leaderboard/jacob.png'),
-    'hannah@example.com': require('../assets/images/leaderboard/hannah.png'),
-    'catherine@example.com': require('../assets/images/leaderboard/catherine.png'),
-    'james@example.com': require('../assets/images/leaderboard/james.png'),
-    'larry@example.com': require('../assets/images/leaderboard/jacob.png'),
-  };
+  interface PlayerData {
+    name: string;
+    email: string;
+    points: number;
+    gender: string;
+    overallrank: string;
+    avatar?: string;
+    avatarUrl?: string;
+  }
   
   export default function PlayerDetailsScreen() {
-    const { name, points, gender, email, overallrank } = useLocalSearchParams();
+    const { id } = useLocalSearchParams();
+    const [playerData, setPlayerData] = useState<PlayerData | null>(null);
+    const [loading, setLoading] = useState(true);
+  
+    useEffect(() => {
+      const fetchPlayerData = async () => {
+        try {
+          setLoading(true);
+          const playerDoc = await getDoc(doc(db, 'users', id as string));
+          
+          if (playerDoc.exists()) {
+            const data = playerDoc.data();
+            let avatarUrl = '';
+            
+            // Get avatar URL from storage if it exists
+            if (data.avatar) {
+              try {
+                const imageRef = ref(storage, data.avatar);
+                avatarUrl = await getDownloadURL(imageRef);
+              } catch (error) {
+                console.warn('Error fetching avatar:', error);
+              }
+            }
+  
+            setPlayerData({
+              name: data.name || 'Unknown',
+              email: data.email || '',
+              points: data.points || 0,
+              gender: data.gender || 'male',
+              overallrank: data.overallrank || '0',
+              avatar: data.avatar || '',
+              avatarUrl,
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching player data:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+  
+      fetchPlayerData();
+    }, [id]);
+  
+    if (loading || !playerData) {
+      return (
+        <View style={[styles.container, styles.loadingContainer]}>
+          <ActivityIndicator size="large" color="#fff" />
+        </View>
+      );
+    }
   
     const backgroundImage =
-      gender === 'male'
+      playerData.gender === 'male'
         ? require('../assets/images/leaderboard/bluebg.png')
         : require('../assets/images/leaderboard/pinkbg.png');
   
-    const statsBgColor = gender === 'male' ? '#6549FE' : '#FFBCDE';
-    const avatar = avatarMap[email as string];
+    const statsBgColor = playerData.gender === 'male' ? '#6549FE' : '#FFBCDE';
   
     const achievements = [
       {
@@ -92,7 +144,11 @@ import {
             {/* Avatar + Card */}
             <View style={styles.cardWrapper}>
               <View style={styles.avatarWrapper}>
-                <Image source={avatar} style={styles.avatar} />
+                {playerData.avatarUrl ? (
+                  <Image source={{ uri: playerData.avatarUrl }} style={styles.avatar} />
+                ) : (
+                  <Image source={require('../assets/images/leaderboard/ramsey.png')} style={styles.avatar} />
+                )}
               </View>
   
               <View style={styles.profileCard}>
@@ -108,7 +164,7 @@ import {
                   />
                 </View>
   
-                <Text style={styles.name}>{name}</Text>
+                <Text style={styles.name}>{playerData.name}</Text>
   
                 <View
                   style={[styles.statsContainer, { backgroundColor: statsBgColor }]}
@@ -120,7 +176,7 @@ import {
                     />
                     <Text style={styles.statLabel}>POINTS</Text>
                     <Text style={styles.statValue}>
-                      {Number(points).toLocaleString()}
+                      {playerData.points.toLocaleString()}
                     </Text>
                   </View>
   
@@ -132,7 +188,7 @@ import {
                       style={styles.statIcon}
                     />
                     <Text style={styles.statLabel}>OVERALL RANK</Text>
-                    <Text style={styles.statValue}>#{overallrank}</Text>
+                    <Text style={styles.statValue}>#{playerData.overallrank}</Text>
                   </View>
   
                   <View style={styles.verticalDivider} />
@@ -189,6 +245,10 @@ import {
   }
   
   const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: '#7B4EF6',
+    },
     bg: {
       flex: 1,
       resizeMode: 'cover',
@@ -362,6 +422,11 @@ import {
       height: 6,
       backgroundColor: '#FFD700',
       borderRadius: 3,
+    },
+    loadingContainer: {
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: '#7B4EF6',
     },
   });
   

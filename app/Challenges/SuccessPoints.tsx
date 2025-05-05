@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,12 +8,36 @@ import {
   ImageBackground,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { getAuth } from 'firebase/auth';
+import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
+import { db } from '../../firebaseConfig';
 
 const { width } = Dimensions.get('window');
 
 export default function AchievementScreen() {
   const router = useRouter();
+  const { points } = useLocalSearchParams<{ points?: string }>();
+
+  useEffect(() => {
+    const savePointsToUser = async () => {
+      if (!points) return;
+      const auth = getAuth();
+      const user = auth.currentUser;
+      if (!user) return;
+      const userRef = doc(db, 'users', user.uid);
+      const userSnap = await getDoc(userRef);
+      const pointsNum = parseFloat(points);
+      if (userSnap.exists()) {
+        const userData = userSnap.data();
+        const prevPoints = typeof userData.points === 'number' ? userData.points : 0;
+        await updateDoc(userRef, { points: prevPoints + pointsNum });
+      } else {
+        await setDoc(userRef, { points: pointsNum }, { merge: true });
+      }
+    };
+    savePointsToUser();
+  }, [points]);
 
   return (
     <View style={styles.container}>
@@ -38,8 +62,8 @@ export default function AchievementScreen() {
         {/* White Card Content */}
         <View style={styles.card}>
           {/* Points & Achievement Message */}
-          <Text style={styles.achievementText}>YOU’VE GOT AN ACHIEVEMENT</Text>
-          <Text style={styles.points}>+10</Text>
+          <Text style={styles.achievementText}>YOU'VE GOT AN ACHIEVEMENT</Text>
+          <Text style={styles.points}>{points ? `+${points}` : '+0'}</Text>
           <View style={styles.bonusRow}>
             <Text style={styles.bonusText}>bonus points</Text>
             <Image

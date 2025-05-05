@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -8,113 +8,203 @@ import {
   Dimensions,
   Image,
   ImageBackground,
-  Modal, // <-- This is needed for your modals
+  Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ImageSourcePropType } from 'react-native';
+import { db, auth, storage } from '../../firebaseConfig';
+import { collection, query, getDocs, DocumentData, doc, getDoc, deleteDoc } from 'firebase/firestore';
+import { ref, getDownloadURL } from 'firebase/storage';
 
 type Challenge = {
   id: string;
   title: string;
   description: string;
-  day: string;
-  progress: number;
   goal: number;
   startDate: string;
   endDate: string;
-  icon: ImageSourcePropType;
+  icon: string;
   progressColor: string;
-  friends: ImageSourcePropType[];
-  
+  friends: string[];
+  createdAt: string;
+  updatedAt: string;
 };
 
+type FriendData = {
+  id: string;
+  name: string;
+  avatar: string;
+};
 
-const challengesData = [
-  {
-    id: '1',
-    title: 'Read a book',
-    description: '4 days per week',
-    day: 'Day 3',
-    progress: 5,
-    goal: 30,
-    startDate: 'September 12',
-    endDate: 'September 15',
-    icon: require('../assets/images/challenges/read.png'),
-    progressColor: '#6549FE',
-    friends: [
-      require('../assets/images/avatars/user1.png'),
-      require('../assets/images/avatars/user2.png'),
-      require('../assets/images/avatars/user3.png'),
-      require('../assets/images/avatars/user4.png'),
-    ],
-  },
-];
-
-const moreChallengesData = [
-  {
-    id: '2',
-    title: 'Study',
-    description: '4 days per week',
-    day: 'Day 6',
-    progress: 5,
-    goal: 30,
-    startDate: 'September 12',
-    endDate: 'September 15',
-    icon: require('../assets/images/challenges/studyIcon.png'),
-    progressColor: '#FF9900',
-    friends: [
-      require('../assets/images/avatars/user1.png'),
-      require('../assets/images/avatars/user2.png'),
-      require('../assets/images/avatars/user3.png'),
-      require('../assets/images/avatars/user4.png'),
-    ],
-  },
-  {
-    id: '3',
-    title: 'Exercise',
-    description: '4 days per week',
-    day: 'Day 4',
-    progress: 5,
-    goal: 30,
-    startDate: 'September 12',
-    endDate: 'September 15',
-    icon: require('../assets/images/challenges/exerciseIcon.png'),
-    progressColor: '#FF33A8',
-    friends: [
-      require('../assets/images/avatars/user1.png'),
-      require('../assets/images/avatars/user2.png'),
-      require('../assets/images/avatars/user3.png'),
-      require('../assets/images/avatars/user4.png'),
-      require('../assets/images/avatars/user5.png'),
-    ],
-  },
-  {
-    id: '4',
-    title: 'Gardening',
-    description: '4 days per week',
-    day: 'Day 10',
-    progress: 5,
-    goal: 30,
-    startDate: 'September 12',
-    endDate: 'September 15',
-    icon: require('../assets/images/challenges/gardeningIcon.png'),
-    progressColor: '#00DB3A',
-    friends: [
-      require('../assets/images/avatars/user2.png'),
-      require('../assets/images/avatars/user3.png'),
-      require('../assets/images/avatars/user4.png'),
-    ],
-  },
-];
-
+const DEFAULT_IMAGE = require('../../assets/images/default-avatar.png');
 
 export default function HomeScreen() {
-  //const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [friendsData, setFriendsData] = useState<{ [key: string]: FriendData }>({});
+  const [loading, setLoading] = useState(true);
   const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(null);
   const [showProgressModal, setShowProgressModal] = useState(false);
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [showDeletedModal, setShowDeletedModal] = useState(false);
+  const [iconError, setIconError] = useState<{ [challengeId: string]: boolean }>({});
+  const [avatarError, setAvatarError] = useState<{ [friendId: string]: boolean }>({});
+
+  const getDownloadableUrl = async (gsUrl: string): Promise<string | undefined> => {
+    try {
+      if (!gsUrl || !gsUrl.startsWith('gs://')) return gsUrl;
+      // Extract the path from gs:// URL
+      const path = gsUrl.replace('gs://neome-beac7.firebasestorage.app/', '');
+      const storageRef = ref(storage, path);
+      const downloadUrl = await getDownloadURL(storageRef);
+      return downloadUrl;
+    } catch (error) {
+      console.error('Error converting gs:// URL:', error);
+      return undefined; // Return undefined if not found
+    }
+  };
+
+  const getFriendData = async (friendId: string) => {
+    try {
+      const userDoc = await getDoc(doc(db, 'users', friendId));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        let avatarUrl = userData.avatar || '';
+        // If the avatar is a gs:// or storage path, convert to HTTP URL
+        if (avatarUrl.startsWith('gs://')) {
+          // Extract the filename
+          const match = avatarUrl.match(/gs:\/\/[^\/]+\/profile\/(user\d+\.png)/);
+          if (match && match[1]) {
+            // Use the public HTTP URL for Firebase Storage
+            avatarUrl = `https://firebasestorage.googleapis.com/v0/b/neome-beac7.firebasestorage.app/o/profile%2F${encodeURIComponent(match[1])}?alt=media`;
+          } else {
+            // fallback to undefined if not a known file
+            avatarUrl = undefined;
+          }
+        } else if (avatarUrl.startsWith('/profile/') || avatarUrl.startsWith('profile/')) {
+          // Handle storage path without gs://
+          const filename = avatarUrl.split('/').pop();
+          if (filename) {
+            avatarUrl = `https://firebasestorage.googleapis.com/v0/b/neome-beac7.firebasestorage.app/o/profile%2F${encodeURIComponent(filename)}?alt=media`;
+          } else {
+            avatarUrl = undefined;
+          }
+        }
+        return {
+          id: friendId,
+          name: userData.name || '',
+          avatar: avatarUrl,
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error(`Error getting user data for friend ${friendId}:`, error);
+      return null;
+    }
+  };
+
+  const loadFriendsData = async (friendIds: string[]) => {
+    const uniqueFriendIds = Array.from(new Set(friendIds));
+    const friendsDataMap: { [key: string]: FriendData } = {};
+
+    await Promise.all(
+      uniqueFriendIds.map(async (friendId) => {
+        const friendData = await getFriendData(friendId);
+        if (friendData) {
+          friendsDataMap[friendId] = friendData;
+        }
+      })
+    );
+
+    setFriendsData(friendsDataMap);
+  };
+
+  const fetchChallengeIconUrl = async (challengeTitle: string) => {
+    try {
+      const iconDoc = await getDoc(doc(db, 'challenges_icons', challengeTitle));
+      if (iconDoc.exists()) {
+        const gsPath = iconDoc.data().path;
+        // Convert gs:// to HTTP URL
+        const match = gsPath.match(/gs:\/\/[^\/]+\/challenges_icons\/(.+\.png)/);
+        if (match && match[1]) {
+          return `https://firebasestorage.googleapis.com/v0/b/neome-beac7.firebasestorage.app/o/challenges_icons%2F${encodeURIComponent(match[1])}?alt=media`;
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching icon from Firestore:', error);
+    }
+    return undefined;
+  };
+
+  const fetchChallenges = async () => {
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        console.log('No user logged in');
+        setLoading(false);
+        return;
+      }
+
+      const userChallengesRef = collection(db, `users/${currentUser.uid}/challenges`);
+      const querySnapshot = await getDocs(userChallengesRef);
+      const fetchedChallenges: Challenge[] = [];
+      const allFriendIds = new Set<string>();
+      
+      for (const docSnap of querySnapshot.docs) {
+        const data = docSnap.data() as DocumentData;
+        const friends = data.friends || [];
+        friends.forEach((friendId: string) => allFriendIds.add(friendId));
+        // Try to get icon URL from the challenge document
+        let iconUrl = data.icon || '';
+        // If iconUrl is missing or not a valid URL, try Firestore lookup table
+        if (!iconUrl || (!iconUrl.startsWith('http') && !iconUrl.startsWith('gs://') && !iconUrl.startsWith('challenges_icons/'))) {
+          iconUrl = await fetchChallengeIconUrl(data.title);
+        } else if (iconUrl.startsWith('gs://')) {
+          // Extract the filename
+          const match = iconUrl.match(/gs:\/\/[^\/]+\/challenges_icons\/(.+\.png)/);
+          if (match && match[1]) {
+            iconUrl = `https://firebasestorage.googleapis.com/v0/b/neome-beac7.firebasestorage.app/o/challenges_icons%2F${encodeURIComponent(match[1])}?alt=media`;
+          } else {
+            iconUrl = undefined;
+          }
+        } else if (iconUrl.startsWith('/challenges_icons/') || iconUrl.startsWith('challenges_icons/')) {
+          // Handle storage path without gs://
+          const filename = iconUrl.split('/').pop();
+          if (filename) {
+            iconUrl = `https://firebasestorage.googleapis.com/v0/b/neome-beac7.firebasestorage.app/o/challenges_icons%2F${encodeURIComponent(filename)}?alt=media`;
+          } else {
+            iconUrl = undefined;
+          }
+        }
+        fetchedChallenges.push({
+          id: docSnap.id,
+          title: data.title || '',
+          description: data.description || '',
+          goal: data.goal || 0,
+          startDate: data.startDate || '',
+          endDate: data.endDate || '',
+          icon: iconUrl,
+          progressColor: data.progressColor || '#6549FF',
+          friends: friends,
+          createdAt: data.createdAt || '',
+          updatedAt: data.updatedAt || '',
+        });
+      }
+
+      setChallenges(fetchedChallenges);
+      // Load all friend data including avatars
+      await loadFriendsData(Array.from(allFriendIds));
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching challenges:', error);
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchChallenges();
+  }, []);
 
   // Handler to trigger the first modal
   const handleEllipsisPress = (challenge: Challenge) => {
@@ -123,11 +213,45 @@ export default function HomeScreen() {
   };
 
   // Handler to delete the challenge
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     setShowDeleteConfirmModal(false);
-    setShowDeletedModal(true);
+    if (!selectedChallenge) return;
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) throw new Error('No user logged in');
+      const challengeRef = doc(db, 'users', currentUser.uid, 'challenges', selectedChallenge.id);
+      await deleteDoc(challengeRef);
+      // Remove from local state
+      setChallenges(prev => prev.filter(c => c.id !== selectedChallenge.id));
+      setShowDeletedModal(true);
+      setSelectedChallenge(null);
+    } catch (error) {
+      console.error('Error deleting challenge:', error);
+      // Optionally show an error modal or toast here
+    }
+  };
 
-    // TODO: Optionally remove from challengesData array here if it's in state
+  const handleEditChallenge = () => {
+    if (selectedChallenge) {
+      setShowProgressModal(false);
+      router.push({
+        pathname: '/Challenges/CreateNewChallenge',
+        params: {
+          editMode: "true",
+          challengeData: JSON.stringify({
+            id: selectedChallenge.id,
+            name: selectedChallenge.title,
+            description: selectedChallenge.description,
+            goal: selectedChallenge.goal,
+            startDate: selectedChallenge.startDate,
+            endDate: selectedChallenge.endDate,
+            icon: selectedChallenge.icon,
+            progressColor: selectedChallenge.progressColor,
+            friends: selectedChallenge.friends
+          })
+        }
+      });
+    }
   };
 
   const renderChallengeCards = (data: Challenge[]) =>
@@ -139,7 +263,12 @@ export default function HomeScreen() {
           {/* Top Row */}
           <View style={styles.challengeHeader}>
             <View style={styles.challengeIconWrapper}>
-              <Image source={item.icon} style={styles.challengeIcon} resizeMode="contain" />
+              <Image
+                source={iconError[item.id] || !item.icon ? DEFAULT_IMAGE : { uri: item.icon }}
+                style={styles.challengeIcon}
+                resizeMode="contain"
+                onError={() => setIconError(prev => ({ ...prev, [item.id]: true }))}
+              />
             </View>
             <View style={styles.challengeText}>
               <Text style={styles.challengeTitle}>{item.title}</Text>
@@ -148,15 +277,11 @@ export default function HomeScreen() {
             <TouchableOpacity onPress={() => handleEllipsisPress(item)}>
               <Ionicons name="ellipsis-horizontal" size={22} color="#6549FE" />
             </TouchableOpacity>
-
           </View>
   
           {/* Mid Info */}
           <View style={styles.challengeInfoRow}>
-            <Text style={styles.challengeDay}>{item.day}</Text>
             <Text style={styles.challengeProgress}>
-              <Text style={styles.progressCurrent}>{item.progress}</Text>
-              {' / '}
               <Text style={styles.progressGoal}>{item.goal} mins</Text>
             </Text>
           </View>
@@ -167,7 +292,7 @@ export default function HomeScreen() {
               style={[
                 styles.progressBarFill,
                 {
-                  width: `${(item.progress / item.goal) * 100}%`,
+                  width: '0%',
                   backgroundColor: item.progressColor,
                 },
               ]}
@@ -180,11 +305,12 @@ export default function HomeScreen() {
               {item.startDate} - {item.endDate}
             </Text>
             <View style={styles.friendAvatars}>
-              {visibleFriends.map((avatar: any, i: number) => (
+              {visibleFriends.map((friendId: string, i: number) => (
                 <Image
                   key={i}
-                  source={avatar}
+                  source={avatarError[friendId] || !friendsData[friendId]?.avatar ? DEFAULT_IMAGE : { uri: friendsData[friendId].avatar }}
                   style={[styles.avatar, { marginLeft: i !== 0 ? -10 : 0 }]}
+                  onError={() => setAvatarError(prev => ({ ...prev, [friendId]: true }))}
                 />
               ))}
               {friendOverflow && (
@@ -199,8 +325,6 @@ export default function HomeScreen() {
         </View>
       );
     });
-  
-    const [activeTab, setActiveTab] = useState('Challenges');
 
   return (
     <View style={styles.container}>
@@ -208,7 +332,6 @@ export default function HomeScreen() {
         contentContainerStyle={{ paddingBottom: 140 }}
         showsVerticalScrollIndicator={false}
       >
-
         {/* Header */}
         <View style={styles.headerContainer}>
           <TouchableOpacity style={styles.backButton}
@@ -221,22 +344,19 @@ export default function HomeScreen() {
             onPress={() => router.push("/Challenges/CreateNewChallenge")}>
             <Ionicons name="add" size={24} color="#6549FE" />
           </TouchableOpacity>
-
         </View>
 
         <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={[styles.tabButton]}
-          onPress={() => router.push('/messaging/MessageHome')}>
-          <Text style={styles.tabText}>My Friends</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tabButton, styles.activeTab]}>
-          <Text style={[styles.tabText, styles.activeTabText]}>Challenges</Text>
-        </TouchableOpacity>
-      </View>
-
-
+          <TouchableOpacity
+            style={[styles.tabButton]}
+            onPress={() => router.push('/messaging/MessageHome')}>
+            <Text style={styles.tabText}>My Friends</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabButton, styles.activeTab]}>
+            <Text style={[styles.tabText, styles.activeTabText]}>Challenges</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Trophy Card */}
         <ImageBackground
@@ -244,26 +364,31 @@ export default function HomeScreen() {
           style={styles.trophyCard}
           imageStyle={{ borderRadius: 20 }}
         >
-          <Text style={styles.trophyTitle}>Let’s Play Together</Text>
+          <Text style={styles.trophyTitle}>Let's Play Together</Text>
           <TouchableOpacity
             style={styles.startButton}
             onPress={() => router.push("/Challenges/MyChallengesScreen")}>
             <Text style={styles.startButtonText}>Start</Text>
           </TouchableOpacity>
 
-
-
           <Image source={require('../assets/images/challenges/trophy.png')} style={styles.trophyImage} />
         </ImageBackground>
 
         <Text style={styles.progressTitle}>My Progress</Text>
 
-        {/* Render Challenge Cards */}
-        <View style={styles.challengeList}>
-          {renderChallengeCards(challengesData)}
-          {renderChallengeCards(moreChallengesData)}
-        </View>
+        {/* Loading State */}
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#6549FE" />
+          </View>
+        ) : (
+          /* Render Challenge Cards */
+          <View style={styles.challengeList}>
+            {renderChallengeCards(challenges)}
+          </View>
+        )}
       </ScrollView>
+
       {/* Bottom Navigation Bar */}
       <View style={styles.bottomNav}>
             <TouchableOpacity style={styles.navButton}>
@@ -298,10 +423,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
             <Text style={styles.modalTitle}>My Progress</Text>
             <Image source={require('../assets/images/challenges/trophy.png')} style={{ width: 80, height: 80, marginVertical: 20 }} />
-            <TouchableOpacity style={styles.modalPrimaryBtn} onPress={() => {
-              setShowProgressModal(false);
-              router.push('/Challenges/CreateNewChallenge');
-            }}>
+            <TouchableOpacity style={styles.modalPrimaryBtn} onPress={handleEditChallenge}>
               <Text style={styles.modalBtnText}>Edit Challenge</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.modalSecondaryBtn} onPress={() => {
@@ -349,21 +471,20 @@ export default function HomeScreen() {
       </Modal>
 
     </View>
-
-    
-    
   );
-  
 }
-
-
 
 const { width } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F3F6FF' },
   scrollContainer: { paddingBottom: 100 },
-
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: 200,
+  },
   headerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -514,17 +635,9 @@ const styles = StyleSheet.create({
     marginTop: 12,
 
   },
-  challengeDay: {
-    color: '#6549FE',
-    fontWeight: 'bold',
-  },
   challengeProgress: {
     fontSize: 14,
     color: '#6B7280',
-  },
-  progressCurrent: {
-    color: '#6549FE',
-    fontWeight: 'bold',
   },
   progressGoal: {
     color: '#FF9900',

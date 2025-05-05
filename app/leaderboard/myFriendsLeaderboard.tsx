@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,105 +7,115 @@ import {
   StyleSheet,
   SafeAreaView,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
+import { auth, db, storage } from '../../firebaseConfig';
+import { collection, query, where, orderBy, limit, getDocs, doc, getDoc } from 'firebase/firestore';
+import { getDownloadURL, ref } from 'firebase/storage';
 
-const leaderboardData = {
-  top3: [
-    {
-      id: '1',
-      name: 'Ramsey',
-      email: 'ramsey@example.com',
-      points: 31560,
-      avatar: require('../assets/images/leaderboard/ramsey.png'),
-      gender: 'female',
-      overallrank: '1',
-    },
-    {
-      id: '2',
-      name: 'Mary',
-      email: 'mary@example.com',
-      points: 29560,
-      avatar: require('../assets/images/leaderboard/mary.png'),
-      gender: 'female',
-      overallrank: '2',
-    },
-    {
-      id: '3',
-      name: 'Kyla',
-      email: 'kyla@example.com',
-      points: 21000,
-      avatar: require('../assets/images/leaderboard/kyla.png'),
-      gender: 'female',
-      overallrank: '3',
-    },
-  ],
-  others: [
-    {
-      id: '4',
-      name: 'Jacob',
-      email: 'jacob@example.com',
-      points: 19200,
-      avatar: require('../assets/images/leaderboard/jacob.png'),
-      gender: 'male',
-      overallrank: '4',
-    },
-    {
-      id: '5',
-      name: 'Perry',
-      email: 'perry@example.com',
-      points: 19200,
-      avatar: require('../assets/images/leaderboard/jacob.png'),
-      gender: 'male',
-      overallrank: '5',
-    },
-    {
-      id: '6',
-      name: 'Hannah',
-      email: 'hannah@example.com',
-      points: 16200,
-      avatar: require('../assets/images/leaderboard/hannah.png'),
-      gender: 'female',
-      overallrank: '6',
-    },
-    {
-      id: '7',
-      name: 'Catherine',
-      email: 'catherine@example.com',
-      points: 15280,
-      avatar: require('../assets/images/leaderboard/catherine.png'),
-      gender: 'female',
-      overallrank: '7',
-    },
-    {
-      id: '8',
-      name: 'James',
-      email: 'james@example.com',
-      points: 15200,
-      avatar: require('../assets/images/leaderboard/james.png'),
-      gender: 'male',
-      overallrank: '8',
-    },
-    {
-      id: '9',
-      name: 'Larry',
-      email: 'larry@example.com',
-      points: 14890,
-      avatar: require('../assets/images/leaderboard/jacob.png'),
-      gender: 'male',
-      overallrank: '9',
-    },
-  ],
-};
-
+interface Friend {
+  id: string;
+  name: string;
+  email: string;
+  points: number;
+  avatar: string;
+  gender: string;
+  overallrank: string;
+  avatarUrl?: string;
+}
 
 export default function LeaderboardScreen() {
   const [activeTab, setActiveTab] = useState<'overall' | 'friends'>('friends');
+  const [friends, setFriends] = useState<Friend[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      const user = auth.currentUser;
+      if (user) {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          setCurrentUser({ id: user.uid, ...userDoc.data() });
+        }
+      }
+    };
+
+    fetchCurrentUser();
+  }, []);
+
+  useEffect(() => {
+    const fetchFriends = async () => {
+      if (!currentUser) return;
+
+      try {
+        setLoading(true);
+        const friendsList: Friend[] = [];
+        
+        // Get the current user's friends
+        const userDoc = await getDoc(doc(db, 'users', currentUser.id));
+        const userData = userDoc.data();
+        const userFriends = userData?.friends || [];
+
+        // Fetch each friend's data
+        for (const friendId of userFriends) {
+          const friendDoc = await getDoc(doc(db, 'users', friendId));
+          if (friendDoc.exists()) {
+            const friendData = friendDoc.data();
+            let avatarUrl = '';
+            
+            // Get avatar URL from storage if it exists
+            if (friendData.avatar) {
+              try {
+                const imageRef = ref(storage, friendData.avatar);
+                avatarUrl = await getDownloadURL(imageRef);
+              } catch (error) {
+                console.warn('Error fetching avatar:', error);
+              }
+            }
+
+            friendsList.push({
+              id: friendId,
+              name: friendData.name || 'Unknown',
+              email: friendData.email || '',
+              points: friendData.points || 0,
+              avatar: friendData.avatar || '',
+              gender: friendData.gender || 'male',
+              overallrank: friendData.overallrank || '0',
+              avatarUrl,
+            });
+          }
+        }
+
+        // Sort friends by points in descending order
+        friendsList.sort((a, b) => b.points - a.points);
+        setFriends(friendsList);
+      } catch (error) {
+        console.error('Error fetching friends:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFriends();
+  }, [currentUser]);
+
+  // Split friends into top 3 and others
+  const top3 = friends.slice(0, 3);
+  const others = friends.slice(3, 50);
+
+  if (loading) {
+    return (
+      <View style={[styles.root, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#fff" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.safeArea}>
-
         {/* ✅ Fixed Arc Background */}
         <Image
           source={require('../assets/images/leaderboard/Group10783.png')}
@@ -123,9 +133,6 @@ export default function LeaderboardScreen() {
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContent}>
-
-        
-
           {/* Header Tabs */}
           <View style={styles.tabWrapper}>
             <View style={styles.segmentBackground}>
@@ -165,108 +172,130 @@ export default function LeaderboardScreen() {
             </View>
           </View>
 
-         {/* Podium Section */}
+          {/* Podium Section */}
           <View style={styles.podiumWrapper}>
-              <Image source={require('../assets/images/leaderboard/podium.png')} style={styles.podiumImage} />
+            <Image source={require('../assets/images/leaderboard/podium.png')} style={styles.podiumImage} />
 
-              {/* First Place */}
+            {/* First Place */}
+            {top3[0] && (
               <TouchableOpacity
                 style={[styles.avatarWrapper, styles.firstPlace]}
                 onPress={() =>
                   router.push({
                     pathname: '../leaderboard/playerDetails',
                     params: {
-                      id: leaderboardData.top3[0].id,
-                      name: leaderboardData.top3[0].name,
-                      email: leaderboardData.top3[0].email,
-                      points: leaderboardData.top3[0].points.toString(),
-                      gender: leaderboardData.top3[0].gender,
-                      overallrank: leaderboardData.top3[0].overallrank,
+                      id: top3[0].id,
+                      name: top3[0].name,
+                      email: top3[0].email,
+                      points: top3[0].points.toString(),
+                      gender: top3[0].gender,
+                      overallrank: top3[0].overallrank,
                     },
                   })
                 }
               >
-                <Image source={leaderboardData.top3[0].avatar} style={styles.avatar} />
-                <Text style={styles.userName}>{leaderboardData.top3[0].name}</Text>
-                <Text style={styles.userPoints}>{leaderboardData.top3[0].points.toLocaleString()}</Text>
+                {top3[0].avatarUrl ? (
+                  <Image source={{ uri: top3[0].avatarUrl }} style={styles.avatar} />
+                ) : (
+                  <Image source={require('../assets/images/leaderboard/ramsey.png')} style={styles.avatar} />
+                )}
+                <Text style={styles.userName}>{top3[0].name}</Text>
+                <Text style={styles.userPoints}>{top3[0].points.toLocaleString()}</Text>
               </TouchableOpacity>
+            )}
 
-              {/* Second Place */}
+            {/* Second Place */}
+            {top3[1] && (
               <TouchableOpacity
                 style={[styles.avatarWrapper, styles.secondPlace]}
                 onPress={() =>
                   router.push({
                     pathname: '../leaderboard/playerDetails',
                     params: {
-                      id: leaderboardData.top3[1].id,
-                      name: leaderboardData.top3[1].name,
-                      email: leaderboardData.top3[1].email,
-                      points: leaderboardData.top3[1].points.toString(),
-                      gender: leaderboardData.top3[1].gender,
-                      overallrank: leaderboardData.top3[1].overallrank,
+                      id: top3[1].id,
+                      name: top3[1].name,
+                      email: top3[1].email,
+                      points: top3[1].points.toString(),
+                      gender: top3[1].gender,
+                      overallrank: top3[1].overallrank,
                     },
                   })
                 }
               >
-                <Image source={leaderboardData.top3[1].avatar} style={styles.avatar} />
-                <Text style={styles.userName}>{leaderboardData.top3[1].name}</Text>
-                <Text style={styles.userPoints}>{leaderboardData.top3[1].points.toLocaleString()}</Text>
+                {top3[1].avatarUrl ? (
+                  <Image source={{ uri: top3[1].avatarUrl }} style={styles.avatar} />
+                ) : (
+                  <Image source={require('../assets/images/leaderboard/mary.png')} style={styles.avatar} />
+                )}
+                <Text style={styles.userName}>{top3[1].name}</Text>
+                <Text style={styles.userPoints}>{top3[1].points.toLocaleString()}</Text>
               </TouchableOpacity>
+            )}
 
-              {/* Third Place */}
+            {/* Third Place */}
+            {top3[2] && (
               <TouchableOpacity
                 style={[styles.avatarWrapper, styles.thirdPlace]}
                 onPress={() =>
                   router.push({
                     pathname: '../leaderboard/playerDetails',
                     params: {
-                      id: leaderboardData.top3[2].id,
-                      name: leaderboardData.top3[2].name,
-                      email: leaderboardData.top3[2].email,
-                      points: leaderboardData.top3[2].points.toString(),
-                      gender: leaderboardData.top3[2].gender,
-                      overallrank: leaderboardData.top3[2].overallrank,
+                      id: top3[2].id,
+                      name: top3[2].name,
+                      email: top3[2].email,
+                      points: top3[2].points.toString(),
+                      gender: top3[2].gender,
+                      overallrank: top3[2].overallrank,
                     },
                   })
                 }
               >
-                <Image source={leaderboardData.top3[2].avatar} style={styles.avatar} />
-                <Text style={styles.userName}>{leaderboardData.top3[2].name}</Text>
-                <Text style={styles.userPoints}>{leaderboardData.top3[2].points.toLocaleString()}</Text>
+                {top3[2].avatarUrl ? (
+                  <Image source={{ uri: top3[2].avatarUrl }} style={styles.avatar} />
+                ) : (
+                  <Image source={require('../assets/images/leaderboard/kyla.png')} style={styles.avatar} />
+                )}
+                <Text style={styles.userName}>{top3[2].name}</Text>
+                <Text style={styles.userPoints}>{top3[2].points.toLocaleString()}</Text>
               </TouchableOpacity>
-            </View>
+            )}
+          </View>
 
-            {/* Player List Container */}
-            <View style={styles.listContainer}>
-              {leaderboardData.others.map((user, index) => (
-                <TouchableOpacity
-                  key={user.id}
-                  style={styles.playerCard}
-                  onPress={() =>
-                    router.push({
-                      pathname: '../leaderboard/playerDetails',
-                      params: {
-                        id: user.id,
-                        name: user.name,
-                        email: user.email,
-                        points: user.points.toString(),
-                        gender: user.gender,
-                        overallrank: user.overallrank,
-                      },
-                    })
-                  }
-                >
-                  <View style={styles.rankCircle}>
-                    <Text style={styles.rankText}>{index + 4}</Text>
-                  </View>
-                  <Image source={user.avatar} style={styles.playerAvatar} />
-                  <View>
-                    <Text style={styles.playerName}>{user.name}</Text>
-                    <Text style={styles.playerPointsText}>{user.points.toLocaleString()} points</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
+          {/* Player List Container */}
+          <View style={styles.listContainer}>
+            {others.map((user, index) => (
+              <TouchableOpacity
+                key={user.id}
+                style={styles.playerCard}
+                onPress={() =>
+                  router.push({
+                    pathname: '../leaderboard/playerDetails',
+                    params: {
+                      id: user.id,
+                      name: user.name,
+                      email: user.email,
+                      points: user.points.toString(),
+                      gender: user.gender,
+                      overallrank: user.overallrank,
+                    },
+                  })
+                }
+              >
+                <View style={styles.rankCircle}>
+                  <Text style={styles.rankText}>{index + 4}</Text>
+                </View>
+                {user.avatarUrl ? (
+                  <Image source={{ uri: user.avatarUrl }} style={styles.playerAvatar} />
+                ) : (
+                  <Image source={require('../assets/images/leaderboard/jacob.png')} style={styles.playerAvatar} />
+                )}
+                <View>
+                  <Text style={styles.playerName}>{user.name}</Text>
+                  <Text style={styles.playerPointsText}>{user.points.toLocaleString()} points</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -390,6 +419,7 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
     paddingHorizontal: 20,
     marginTop: 24,
+    flex: 1,
   },
   playerCard: {
     flexDirection: 'row',
@@ -459,4 +489,8 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
     tintColor: '#5E3EE6', // optional: tint if the image is monochrome
   },  
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });

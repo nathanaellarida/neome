@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Image, TouchableOpacity, StyleSheet, Dimensions, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, Image, TouchableOpacity, StyleSheet, Dimensions, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { router } from 'expo-router';
 import Checkbox from 'expo-checkbox';
 
 import { auth, db } from '../../firebaseConfig'; // 🔁 Adjust this import path if needed
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, sendEmailVerification, updateProfile } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import EmailVerificationModal from '../components/EmailVerificationModal';
+import VerificationStatusModal from '../components/VerificationStatusModal';
 
 // ✅ Image Paths
 const BACKGROUND_IMG = require('../assets/images/upper_page_design.png');  
@@ -20,7 +22,7 @@ const BACK_ICON = require('../assets/images/leftBack.png');
 
 const { width, height } = Dimensions.get('window');
 
-export default function SignIn() {
+export default function SignUp() {
   const [isChecked, setChecked] = useState(false);
   const [form, setForm] = useState({
     username: '',
@@ -31,26 +33,29 @@ export default function SignIn() {
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState<'verifying' | 'success'>('verifying');
+  const [showStatusModal, setShowStatusModal] = useState(false);
 
   const handleInputChange = (name: string, value: string) => {
     setForm({ ...form, [name]: value });
   };
 
-  const handleSignIn = async () => {
+  const handleSignUp = async () => {
     if (!isChecked) {
-      alert("You must agree to the Terms and Conditions.");
+      Alert.alert("Error", "You must agree to the Terms and Conditions.");
       return;
     }
 
     const { username, email, password, confirmPassword } = form;
 
     if (!username || !email || !password || !confirmPassword) {
-      alert("Please fill all the fields.");
+      Alert.alert("Error", "Please fill all the fields.");
       return;
     }
 
     if (password !== confirmPassword) {
-      alert("Passwords do not match.");
+      Alert.alert("Error", "Passwords do not match.");
       return;
     }
 
@@ -70,23 +75,59 @@ export default function SignIn() {
         online: true,
         lastSeen: serverTimestamp(),
         friends: [],
-        gender: null  // Initialize gender as null
+        gender: null,
+        emailVerified: false
       });
 
-      console.log("User created:", user.uid);
-      router.push('/neome_userdata_app/UserDataScreen1');
+      // Send email verification
+      await sendEmailVerification(user);
+
+      // Show verification modal
+      setShowVerificationModal(true);
 
     } catch (error: any) {
       console.error("Sign up error:", error);
       
-      // Handle specific Firebase error codes
       if (error.code === 'auth/email-already-in-use') {
-        alert("This email is already registered. Please try logging in instead.");
+        Alert.alert("Error", "This email is already registered. Please try logging in instead.");
       } else {
-        // For other errors, show the error message
-        alert(error.message);
+        Alert.alert("Error", error.message || "Failed to create account");
       }
     }
+  };
+
+  const handleVerificationComplete = async () => {
+    try {
+      setShowVerificationModal(false);
+      setShowStatusModal(true);
+      setVerificationStatus('verifying');
+
+      // Check email verification status
+      if (auth.currentUser) {
+        await auth.currentUser.reload();
+        
+        if (auth.currentUser.emailVerified) {
+          // Update the user's email verification status in Firestore
+          await setDoc(doc(db, "users", auth.currentUser.uid), {
+            emailVerified: true
+          }, { merge: true });
+          
+          // Show success state
+          setVerificationStatus('success');
+        } else {
+          Alert.alert("Not Verified", "Please click the verification link in your email first");
+          setShowStatusModal(false);
+        }
+      }
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "Failed to complete verification");
+      setShowStatusModal(false);
+    }
+  };
+
+  const handleContinue = () => {
+    setShowStatusModal(false);
+    router.push('/neome_userdata_app/UserDataScreen1');
   };
 
   const handleBackPress = () => {
@@ -181,7 +222,7 @@ export default function SignIn() {
           </View>
 
           {/* Sign In Button */}
-          <TouchableOpacity style={styles.signInButton} onPress={handleSignIn}>
+          <TouchableOpacity style={styles.signInButton} onPress={handleSignUp}>
             <Text style={styles.signInButtonText}>Sign Up</Text>
           </TouchableOpacity>
 
@@ -190,6 +231,21 @@ export default function SignIn() {
             <Text style={styles.signUpText}>Already have an account?</Text>
             <Text style={styles.link} onPress={() => router.push('/loginpage/login')}>Login from here</Text>
           </View>
+
+          {/* Email Verification Modal */}
+          <EmailVerificationModal
+            visible={showVerificationModal}
+            email={form.email}
+            onClose={() => setShowVerificationModal(false)}
+            onVerificationComplete={handleVerificationComplete}
+          />
+
+          {/* Verification Status Modal */}
+          <VerificationStatusModal
+            visible={showStatusModal}
+            status={verificationStatus}
+            onContinue={handleContinue}
+          />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
