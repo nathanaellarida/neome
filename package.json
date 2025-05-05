@@ -45,12 +45,8 @@
     "expo-haptics": "~14.0.1",
     "expo-image": "~2.0.6",
     "expo-image-manipulator": "^13.0.6",
-<<<<<<< HEAD
     "expo-image-picker": "^16.0.6",
     "expo-linear-gradient": "~14.0.2",
-=======
-    "expo-image-picker": "~16.0.6",
->>>>>>> dd14cd2f24cd9f5575c7d75e7811975f8596adad
     "expo-linking": "~7.0.5",
     "expo-media-library": "~17.0.6",
     "expo-router": "~4.0.18",
@@ -65,11 +61,8 @@
     "react-dom": "18.3.1",
     "react-native": "0.76.7",
     "react-native-app-intro-slider": "^4.0.4",
-<<<<<<< HEAD
     "react-native-calendars": "^1.1312.0",
-=======
     "react-native-chart-kit": "^6.12.0",
->>>>>>> dd14cd2f24cd9f5575c7d75e7811975f8596adad
     "react-native-element-dropdown": "^2.12.4",
     "react-native-fast-image": "^8.6.3",
     "react-native-gesture-handler": "~2.20.2",
@@ -92,11 +85,7 @@
     "react-native-webrtc": "^124.0.5",
     "react-native-webview": "13.12.5",
     "react-router-dom": "^7.3.0",
-<<<<<<< HEAD
     "socket.io-client": "^4.4.1"
-=======
-    "victory-native": "^41.17.1"
->>>>>>> dd14cd2f24cd9f5575c7d75e7811975f8596adad
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

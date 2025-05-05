@@ -156,7 +156,7 @@ const ChatScreen: React.FC = () => {
   useEffect(() => {
     const loadLongPressSound = async () => {
       const { sound } = await Audio.Sound.createAsync(
-        require('../assets/images/longpress.wav'), // your long-press sound file
+        require('../assets/images/tap.wav'), // your long-press sound file
         { shouldPlay: false }
       );
       longPressSoundRef.current = sound;
