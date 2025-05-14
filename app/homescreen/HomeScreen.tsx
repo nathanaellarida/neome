@@ -369,8 +369,8 @@ export default function HomeScreen() {
               { value: userPoints, label: 'Points', image: require('../assets/images/points.png') },
               { value: todayCalories.toString(), label: 'Calories', image: require('../assets/images/poultryLeg.png') },
               { value: waterIntake.toString(), label: 'Water Intake', image: require('../assets/images/droplet.png') },
-              { value: '25', label: 'Badges', image: require('../assets/images/badges.png') },
-              { value: '2,532', label: 'Steps', image: require('../assets/images/steps.png') },
+              { value: '0', label: 'Badges', image: require('../assets/images/badges.png') },
+              { value: '0', label: 'Steps', image: require('../assets/images/steps.png') },
             ].map((item, index) => (
               <View key={index} style={styles.statBox}>
                 <Image
@@ -1351,9 +1351,9 @@ const styles = StyleSheet.create({
   viewButtonContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start', // Align button to the left
-    marginTop: 10, // Add space from text
+    marginTop: -30, // Add space from text
     width: '100%', // Ensure it takes full width for proper alignment
-    marginLeft: 20,
+    marginLeft: 50,
   },
 
   viewButton: {

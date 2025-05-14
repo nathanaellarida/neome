@@ -86,12 +86,15 @@ export default function SignUp() {
       setShowVerificationModal(true);
 
     } catch (error: any) {
-      console.error("Sign up error:", error);
-      
+      // Handle errors without logging to console
       if (error.code === 'auth/email-already-in-use') {
-        Alert.alert("Error", "This email is already registered. Please try logging in instead.");
+        Alert.alert("Error", "This email is already registered. Please try another email.");
+      } else if (error.code === 'auth/invalid-email') {
+        Alert.alert("Error", "The email address is not valid.");
+      } else if (error.code === 'auth/weak-password') {
+        Alert.alert("Error", "The password is too weak. Please use a stronger password.");
       } else {
-        Alert.alert("Error", error.message || "Failed to create account");
+        Alert.alert("Error", "Failed to create account. Please try again later.");
       }
     }
   };
@@ -120,7 +123,8 @@ export default function SignUp() {
         }
       }
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to complete verification");
+      // Handle errors without logging to console
+      Alert.alert("Error", "Failed to complete verification. Please try again.");
       setShowStatusModal(false);
     }
   };
