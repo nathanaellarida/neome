@@ -702,14 +702,13 @@ export default function HomeScreen() {
           <Text style={styles.challengeTitle}>Challenge Yourself</Text>
           <Text style={styles.challengeMainText}>Let's Play{'\n'}Together</Text>
 
-          {/* Buttons */}
+         {/* Buttons */}
           <View style={styles.challengeButtonContainer}>
-            <TouchableOpacity style={styles.challengeButton}>
+            <TouchableOpacity 
+              style={styles.challengeButton} 
+              onPress={() => router.push('../Challenges/ChallengeDashboard')}
+            >
               <Text style={styles.challengeButtonText}>With friends</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.challengeButton}>
-              <Text style={styles.challengeButtonText}>With others</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1329,6 +1328,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
     marginTop: 10,
+    marginLeft: -160,
   },
   
   challengeButton: {
