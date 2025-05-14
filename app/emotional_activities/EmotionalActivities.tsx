@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,8 +16,12 @@ import { Dropdown } from 'react-native-element-dropdown';
 import { Animated, Easing } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { LineChart } from 'react-native-chart-kit';
-import { format } from 'date-fns';
+import { format, differenceInSeconds, endOfDay } from 'date-fns';
 import Svg, { Polygon, Circle, Line, Text as SvgText } from 'react-native-svg';
+import { db, auth } from '../../firebaseConfig';
+import { collection, addDoc, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
+import defaultEmoji from '../../assets/images/default-emoji.png';
 
 
 //mood History Componnets
@@ -25,12 +29,6 @@ import Svg, { Polygon, Circle, Line, Text as SvgText } from 'react-native-svg';
 const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const calendarMoodEmojis = ['😄', '😊', '😢', '😡', '😐', '😴', '🤩']; // Mock emojis
 const todayIndex = new Date().getDay();
-
-
-const moodHistoryData = weekdays.map((day, index) => ({
-  day,
-  emoji: index <= todayIndex ? calendarMoodEmojis[index] : '', // Empty after today
-}));
 
 const { width } = Dimensions.get('window');
 
@@ -76,6 +74,15 @@ const moodEmojis = [
 const GEMINI_API_KEY = 'YOUR_GEMINI_API_KEY';
 const MODEL_NAME = 'gemini-2.0-flash';
 
+// Add a type for mood selections
+
+type MoodSelection = {
+  id: string;
+  timestamp: any;
+  emoji: string;
+  [key: string]: any;
+};
+
 export default function EmotionalActivities(): JSX.Element {
   const [aiMoodMessage, setAiMoodMessage] = useState('');
 const [loadingMessage, setLoadingMessage] = useState(false);
@@ -119,7 +126,9 @@ const getMoodMessageFromAI = async (emotion: string) => {
   const [selectedMood, setSelectedMood] = useState<Mood | null>(null);
   const [moodDialogVisible, setMoodDialogVisible] = useState<boolean>(false);
   const router = useRouter();
-  const [moodHistory, setMoodHistory] = useState(moodHistoryData);
+  const [moodHistory, setMoodHistory] = useState(
+    weekdays.map((day) => ({ day, emoji: '' }))
+  );
 
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -179,16 +188,128 @@ const emotionLabels = {
   const weeklyChart = [32, 61, 13, 18, 29, 74, 33];
   const monthlyChart = [20, 18, 12, 35, 44, 28, 16, 37, 50, 41, 39, 27];
 
-  const handleMoodPress = (mood: Mood): void => {
+  const [userId, setUserId] = useState<string | null>(null);
+  const [moodSelections, setMoodSelections] = useState<any[]>([]);
+  const [hasReactedToday, setHasReactedToday] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState('');
+  const [mentalStatesData, setMentalStatesData] = useState<{ stress: number; anxiety: number; motivation: number }>({ stress: 0, anxiety: 0, motivation: 0 });
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) setUserId(user.uid);
+      else setUserId(null);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!userId) return;
+    const fetchMoods = async () => {
+      const moodsRef = collection(db, 'users', userId, 'mood_selections');
+      const q = query(moodsRef, orderBy('timestamp', 'desc'));
+      const querySnapshot = await getDocs(q);
+      const selections: MoodSelection[] = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          timestamp: data.timestamp ?? null,
+          emoji: data.emoji ?? '',
+          ...data,
+        };
+      });
+      setMoodSelections(selections);
+
+      // Map moods to weekdays
+      const weekMap = weekdays.map((day, idx) => {
+        // Find a mood selection for this weekday (most recent)
+        const found = selections.find(sel => {
+          if (!sel.timestamp) return false;
+          const date = sel.timestamp instanceof Date ? sel.timestamp : new Date(sel.timestamp.seconds ? sel.timestamp.seconds * 1000 : sel.timestamp);
+          return date.getDay() === idx && date.toDateString() === new Date(date).toDateString();
+        });
+        return {
+          day,
+          emoji: found ? found.emoji : '',
+        };
+      });
+      setMoodHistory(weekMap);
+    };
+    fetchMoods();
+  }, [userId]);
+
+  // Check if user has reacted today
+  useEffect(() => {
+    if (!moodSelections.length) {
+      setHasReactedToday(false);
+      return;
+    }
+    const today = new Date();
+    const todayStr = today.toDateString();
+    const todayReaction = moodSelections.find(sel => {
+      if (!sel.timestamp) return false;
+      const reactionDate = sel.timestamp instanceof Date ? sel.timestamp : new Date(sel.timestamp.seconds ? sel.timestamp.seconds * 1000 : sel.timestamp);
+      return reactionDate.toDateString() === todayStr;
+    });
+    setHasReactedToday(!!todayReaction);
+  }, [moodSelections]);
+
+  // Add a live countdown for timeRemaining
+  useEffect(() => {
+    let interval: NodeJS.Timeout | undefined;
+    if (hasReactedToday) {
+      setTimeRemaining(getTimeRemainingString());
+      interval = setInterval(() => {
+        setTimeRemaining(getTimeRemainingString());
+      }, 1000);
+    } else {
+      setTimeRemaining('');
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [hasReactedToday]);
+
+  useEffect(() => {
+    if (!userId) return;
+    const fetchMentalStates = async () => {
+      const mentalStatesRef = collection(db, 'users', userId, 'mental_states');
+      const q = query(mentalStatesRef, orderBy('timestamp', 'desc'), limit(1));
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        const data = querySnapshot.docs[0].data();
+        setMentalStatesData({
+          stress: data.stress || 0,
+          anxiety: data.anxiety || 0,
+          motivation: data.motivation || 0,
+        });
+      }
+    };
+    fetchMentalStates();
+  }, [userId]);
+
+  const handleMoodPress = async (mood: Mood): Promise<void> => {
     setSelectedMood(mood);
     setMoodDialogVisible(true);
-  
-    // Update today's mood in the mood history
     setMoodHistory(prev =>
       prev.map((entry, index) =>
         index === todayIndex ? { ...entry, emoji: getEmojiFromLabel(mood.label) } : entry
       )
     );
+    if (userId) {
+      try {
+        await addDoc(
+          collection(db, 'users', userId, 'mood_selections'),
+          {
+            mood: mood.label,
+            emoji: getEmojiFromLabel(mood.label),
+            ai_message: aiMoodMessage,
+            timestamp: new Date(),
+          }
+        );
+      } catch (err) {
+        console.error('Error saving mood:', err);
+      }
+    }
   };
 
   const getEmojiFromLabel = (label: string): string => {
@@ -210,10 +331,21 @@ const emotionLabels = {
       case 'confident':
         return '😎';
       default:
-        return '🤔';
+        return '��';
     }
   };  
   
+  function getTimeRemainingString() {
+    const now = new Date();
+    const end = endOfDay(now);
+    const seconds = differenceInSeconds(end, now);
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes
+      .toString()
+      .padStart(2, '0')}:${secs.toString().padStart(2, '0')} Hours`;
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: '#EFF2FF' }}>
@@ -239,7 +371,14 @@ const emotionLabels = {
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
           {moodHistory.map(({ day, emoji }, idx) => (
             <View key={idx} style={{ alignItems: 'center' }}>
-              <Text style={{ fontSize: 24 }}>{emoji}</Text>
+              {emoji ? (
+                <Text style={{ fontSize: 24 }}>{emoji}</Text>
+              ) : (
+                <Image
+                  source={defaultEmoji}
+                  style={{ width: 24, height: 24, resizeMode: 'contain' }}
+                />
+              )}
               <Text style={{ fontSize: 12 }}>{day}</Text>
             </View>
           ))}
@@ -301,7 +440,8 @@ const emotionLabels = {
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: 0.2,
-            shadowRadius: 4,
+            shadowRadius: 2,
+            marginBottom: 12,
           }}
         >
           {/* Notebook Icon */}
@@ -331,73 +471,96 @@ const emotionLabels = {
 
 
         {/* Mood Section Container */}
-        <View style={styles.moodContainer}>
-          <Text style={styles.prompt}>How are you feeling today?</Text>
-          
-
-          {/* Horizontal Mood Scroll */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.moodList}>
-          {moods.map((mood, idx) => (
-            <TouchableOpacity
-              key={idx}
-              onPress={() => {
-                handleMoodPress(mood);
-                setSelectedMood(mood);
-                getMoodMessageFromAI(mood.label);
-              }}
-              style={styles.moodItem}
-            >
-              <Image source={mood.gif} style={styles.moodGif} />
-              <Text style={styles.moodLabel}>{mood.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {/* AI Mood Message */}
-        {loadingMessage ? (
-          <Text style={{ color: '#666', marginTop: 10, marginHorizontal: 20 }}>
-            Loading supportive message...
-          </Text>
-        ) : aiMoodMessage ? (
-          <View
-            style={{
-              marginTop: 10,
-              marginHorizontal: 10,
-              padding: 18,
-              backgroundColor: '#F5F2FF',
-              borderLeftWidth: 5,
-              borderLeftColor: '#6549FE',
-              borderRadius: 14,
-              elevation: 3,
+        <View style={[styles.moodContainer, { marginBottom: 12 }]}>
+          {!hasReactedToday && (
+            <Text style={styles.prompt}>How are you feeling today?</Text>
+          )}
+          {hasReactedToday ? (
+            <View style={{
+              position: 'absolute',
+              top: -16,
+              left: 0,
+              right: 0,
+              bottom: -16,
+              backgroundColor: '#fff',
+              borderRadius: 20,
+              zIndex: 10,
+              justifyContent: 'center',
+              alignItems: 'center',
               shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 4,
-            }}
-          >
-            <Text style={{ color: '#6549FE', fontWeight: 'bold', fontSize: 16, marginBottom: 6 }}>
-              Quote of the Day
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.15,
+              shadowRadius: 12,
+              elevation: 8,
+            }}>
+              <Text style={{ color: '#222', fontWeight: 'bold', fontSize: 18, textAlign: 'center' }}>
+                You can only react once a day!
+              </Text>
+              <Text style={{ color: '#222', fontSize: 16, marginTop: 8, textAlign: 'center' }}>
+                Time Remaining: {timeRemaining}
+              </Text>
+            </View>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.moodList}>
+              {moods.map((mood, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  onPress={() => {
+                    handleMoodPress(mood);
+                    setSelectedMood(mood);
+                    getMoodMessageFromAI(mood.label);
+                  }}
+                  style={styles.moodItem}
+                >
+                  <Image source={mood.gif} style={styles.moodGif} />
+                  <Text style={styles.moodLabel}>{mood.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
+          {loadingMessage ? (
+            <Text style={{ color: '#666', marginTop: 10, marginHorizontal: 20 }}>
+              Loading supportive message...
             </Text>
-            <Text style={{ color: '#3E3E3E', fontSize: 15, lineHeight: 22 }}>
-              {aiMoodMessage}
-            </Text>
-          </View>
-        ) : null}
-
+          ) : aiMoodMessage ? (
+            <View
+              style={{
+                marginTop: 10,
+                marginHorizontal: 10,
+                padding: 18,
+                backgroundColor: '#F5F2FF',
+                borderLeftWidth: 5,
+                borderLeftColor: '#6549FE',
+                borderRadius: 14,
+                elevation: 3,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+              }}
+            >
+              <Text style={{ color: '#6549FE', fontWeight: 'bold', fontSize: 16, marginBottom: 6 }}>
+                Quote of the Day
+              </Text>
+              <Text style={{ color: '#3E3E3E', fontSize: 15, lineHeight: 22 }}>
+                {aiMoodMessage}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
 
         
 
       {/* Mental States Chart */}
-      <View style={[styles.emotionGraphWrapper, { backgroundColor: '#FFFFFF', padding: 20, borderRadius: 20 }]}>
+      <View style={[styles.emotionGraphWrapper, { backgroundColor: '#FFFFFF', padding: 20, borderRadius: 20, marginBottom: 22 }]}>
       <Text style={[styles.chartTitle, { marginBottom: 10 }]}>My Mental State Scale</Text>
         <LineChart
           data={{
             labels: ['Stress', 'Anxiety', 'Motivation'],
             datasets: [
               {
-                data: [0.3, 0.4, 0.9],
+                data: [mentalStatesData.stress, mentalStatesData.anxiety, mentalStatesData.motivation],
                 strokeWidth: 3,
               },
             ],
@@ -622,11 +785,11 @@ const emotionLabels = {
           {/* Title */}
           {selectedMood?.label === 'Good Mood' ? (
             <>
-              <Text style={[styles.dialogTitle, { marginBottom: 5 }]}>You’re in a</Text>
+              <Text style={[styles.dialogTitle, { marginBottom: 5 }]}>You're in a</Text>
               <Text style={styles.dialogTitle}>Good Mood!</Text>
             </>
           ) : (
-            <Text style={styles.dialogTitle}>You’re {selectedMood?.label}!</Text>
+            <Text style={styles.dialogTitle}>You're {selectedMood?.label}!</Text>
           )}
 
           {/* Emoji GIF */}
@@ -686,7 +849,7 @@ const styles = StyleSheet.create({
     width: width,
     height: 75,
     paddingBottom: 20,
-    backgroundColor: '#fff',
+    backgroundColor: '#fff', 
     paddingHorizontal: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',

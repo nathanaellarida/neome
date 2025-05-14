@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import { useRouter, usePathname } from 'expo-router';
 import FloatingChatbot from './chatbot/FloatingChatbot';
 import { View } from 'react-native';
+import { CupSizeProvider } from './context/CupSizeContext';
 
 export default function Layout() {
   const router = useRouter();
@@ -16,20 +17,25 @@ export default function Layout() {
     //router.replace('/Challenges/CreateNewChallenge');
     //router.replace('/components/EmailVerificationModal');
     router.replace('/homescreen/HomeScreen');
+  //router.replace('/homescreen/waterIntake');
+   // router.replace('/neome_userdata_app/wellnessgoals');
+    //router.replace('/neome_userdata_app/activitylevel');
   }, []);
 
   return (
     <FolderProvider>
       <TaskProvider>
-        <SafeAreaView style={{ flex: 1 }}>
-          <View style={{ flex: 1 }}>
-            <Stack screenOptions={{ 
-              headerShown: false, 
-              animation: 'fade' 
-            }} />
-            {pathname !== '/chatbot/App' && <FloatingChatbot />}
-          </View>
-        </SafeAreaView>
+        <CupSizeProvider>
+          <SafeAreaView style={{ flex: 1 }}>
+            <View style={{ flex: 1 }}>
+              <Stack screenOptions={{ 
+                headerShown: false, 
+                animation: 'fade' 
+              }} />
+              {pathname !== '/chatbot/App' && <FloatingChatbot />}
+            </View>
+          </SafeAreaView>
+        </CupSizeProvider>
       </TaskProvider>
     </FolderProvider>
   );

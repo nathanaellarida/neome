@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Dimensions } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons'; // ✅ Import checkmark icon
 
@@ -11,35 +11,44 @@ export default function UserDataScreen4() {
 
   // 🔥 Track selected button
   const [selected, setSelected] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const handleBack = () => {
+    router.back();
+  };
+
+  // Dummy save function for consistency with wellnessgoals (can be replaced with Firestore logic if needed)
+  const handleNext = async () => {
+    setSaving(true);
+    setTimeout(() => {
+      setSaving(false);
+      router.push('/neome_userdata_app/activitylevel');
+    }, 500); // Simulate async
+  };
 
   return (
     <View style={styles.container}>
       {/* 🔙 Back Button */}
       <TouchableOpacity
-        style={[styles.backButton, { top: 65 * scaleHeight, left: 40 * scaleWidth }]}
-        onPress={() => router.back()}
+        style={styles.backButton}
+        onPress={handleBack}
       >
-        <Text style={[styles.backButtonText, { fontSize: 100 * scaleWidth, top: -20 * scaleHeight }]}>←</Text>
+        <Ionicons name="arrow-back" size={24} color="#6549FE" />
       </TouchableOpacity>
 
-      {/* Progress Bar */}
-      <View style={[styles.progressBarContainer, { top: 95 * scaleHeight, right: 60 * scaleWidth }]}>
-        <Text style={[styles.progressText, { fontSize: 40 * scaleWidth }]}>4/8</Text>
+      {/* Progress Container */}
+      <View style={styles.progressContainer}>
+        <View style={styles.progressBarBackground}>
+          <View style={styles.progressBarFill} />
+        </View>
+        <Text style={styles.progressText}>5/9</Text>
       </View>
 
-      {/* Progress Bar Status */}
-      <View style={[styles.progressStatus, { top: 105 * scaleHeight, left: 180 * scaleWidth }]}></View>
-
-      {/* Progress Bar Status Colored */}
-      <View style={[styles.progressStatusColored, { top: 72 * scaleHeight, left: 180 * scaleWidth }]}></View>
-
       {/* Title */}
-      <Text style={[styles.title, { top: 244 * scaleHeight, fontSize: 75 * scaleWidth }]}>
-        Body Type
-      </Text>
+      <Text style={styles.title}>Body Type</Text>
 
       {/* Subtitle */}
-      <Text style={[styles.subtitle, { top: 362 * scaleHeight, fontSize: 50 * scaleWidth }]}>
+      <Text style={styles.subtitle}>
         This helps us create your personalized plan
       </Text>
 
@@ -60,97 +69,116 @@ export default function UserDataScreen4() {
       </View>
 
       {/* Next Button */}
-      <TouchableOpacity
-        style={[styles.nextButton, { left: 162 * scaleWidth, top: 1681 * scaleHeight, width: 757 * scaleWidth, height: 135 * scaleHeight }]}
-        onPress={() => router.push('/neome_userdata_app/activitylevel')}
+      <TouchableOpacity 
+        style={[styles.nextButton, !selected && styles.disabledButton]} 
+        onPress={handleNext}
+        disabled={!selected || saving}
       >
-        <Text style={[styles.nextButtonText, { fontSize: 48 * scaleWidth }]}>Next</Text>
+        {saving ? (
+          <ActivityIndicator color="#FFFFFF" />
+        ) : (
+          <Text style={styles.nextButtonText}>
+            {!selected ? "Select Body Type" : "Save & Continue"}
+          </Text>
+        )}
       </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
-
-  progressStatus: {
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    padding: 20,
+  },
+  backButton: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    zIndex: 1,
+    padding: 10,
+  },
+  progressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginTop: 40,
+    marginRight: 20,
+    gap: 10,
+  },
+  progressBarBackground: {
     width: 240,
     height: 12,
     backgroundColor: '#F3F6FF',
-    justifyContent: 'center',
     borderRadius: 80,
+    overflow: 'hidden',
   },
-  progressStatusColored: {
-    width: 120,
-    height: 12,
+  progressBarFill: {
+    width: '55.56%', // 5/9 = ~55.56%
+    height: '100%',
     backgroundColor: '#6549FE',
     borderRadius: 80,
   },
-  progressBarContainer: { position: 'absolute' },
-  progressText: { fontWeight: '600', color: '#6549FE' },
-  title: {
-    position: 'absolute',
+  progressText: {
+    fontSize: 16,
     fontWeight: '600',
     color: '#6549FE',
-    width: '100%',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#6549FE',
     textAlign: 'center',
+    marginTop: 50,
   },
   subtitle: {
-    position: 'absolute',
+    fontSize: 16,
     color: '#AEAEAE',
-    width: '100%',
     textAlign: 'center',
+    marginTop: 8,
+    paddingHorizontal: 40,
   },
-
-  /* 🔲 Buttons Section */
   buttonContainer: {
-    marginTop: 185,
+    marginTop: 30,
     alignItems: 'center',
     width: '100%',
   },
   bodyTypeButton: {
-    width: 250,
-    height: 70,
+    width: 280,
+    height: 60,
     backgroundColor: '#FFFFFF',
     borderRadius: 67,
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 15,
     flexDirection: 'row',
-    marginBottom: 20,
+    paddingHorizontal: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 5,
   },
-
   buttonText: { fontSize: 20, fontWeight: '600', color: '#6549FE' },
-
-  /* 🔥 Selected Button Styles */
-  selectedButton: { backgroundColor: '#6549FE', flexDirection: 'row' },
-
+  selectedButton: { backgroundColor: '#6549FE' },
   selectedButtonText: { color: '#FFFFFF' },
-
-  checkIcon: { marginLeft: 10 },
-
+  checkIcon: { position: 'absolute', right: 20 },
   nextButton: {
-    position: 'absolute',
     backgroundColor: '#6549FE',
-    justifyContent: 'center',
+    paddingVertical: 15,
+    borderRadius: 25,
     alignItems: 'center',
-    borderRadius: 67,
-  },
-  nextButtonText: { fontWeight: '600', color: '#FFFFFF' },
-
-  /* 🔙 Back Button Styles */
-  backButton: {
-    position: 'absolute',
-    backgroundColor: '#F3F6FF',
-    width: 40,
-    height: 40,
     justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 100,
+    marginTop: 30,
+    marginHorizontal: 20,
   },
-  backButtonText: { fontWeight: 'bold', color: '#6549FE' },
+  nextButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  disabledButton: {
+    backgroundColor: '#C4C4C4',
+  },
 });

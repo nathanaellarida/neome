@@ -3,11 +3,16 @@ import React, { useRef, useEffect } from 'react';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
 import { Audio } from 'expo-av';
+import { db, auth } from '../../firebaseConfig';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
+import type { User } from 'firebase/auth';
 
 export default function App() {
   const webViewRef = useRef<WebView>(null);
   const router = useRouter(); // Initialize router
   const soundRef = useRef<Audio.Sound | null>(null);
+  const [currentUser, setCurrentUser] = React.useState<User | null>(null);
 
   useEffect(() => {
     const loadSound = async () => {
@@ -20,10 +25,15 @@ export default function App() {
 
     loadSound();
 
+    const unsubscribe = onAuthStateChanged(auth, (user: User | null) => {
+      setCurrentUser(user);
+    });
+
     return () => {
       if (soundRef.current) {
         soundRef.current.unloadAsync();
       }
+      unsubscribe();
     };
   }, []);
 
@@ -40,17 +50,31 @@ export default function App() {
   };
   
   const handleWebViewMessage = async (event: WebViewMessageEvent) => {
+    const messageData = event.nativeEvent.data;
     try {
-      const data = JSON.parse(event.nativeEvent.data);
-  
+      const data = JSON.parse(messageData);
       if (data.action === 'goBackToPreviousScreen') {
-        await playTapSound(); // Waits for the sound to finish
-        router.back(); 
+        await playTapSound();
+        router.back();
+      } else if (data.action === 'saveConversation' && currentUser) {
+        if (Array.isArray(data.messages)) {
+          data.messages.forEach((msg: any) => {
+            if (msg.isUser) {
+              console.log('User message:', msg.text);
+            }
+          });
+        }
+        await addDoc(collection(db, 'chatbot'), {
+          user: currentUser.uid,
+          messages: data.messages,
+          createdAt: serverTimestamp(),
+        });
+        console.log('Conversation saved to Firestore!');
       } else {
         console.log('Bot replied:', data);
       }
     } catch (error) {
-      console.warn('Invalid message from WebView:', event.nativeEvent.data);
+      console.warn('Invalid message from WebView:', messageData);
     }
   };  
  

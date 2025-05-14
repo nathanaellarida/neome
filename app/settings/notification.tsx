@@ -1,48 +1,105 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Audio } from 'expo-av';
+import { db, auth } from '../../firebaseConfig';
+import { collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 
-export default function NotificationScreen() {
-  const router = useRouter();
+export default function NotificationScreen() {  const router = useRouter();
   const soundRef = useRef<Audio.Sound | null>(null);
-
-  const handleMarkAllAsRead = () => {
-    // Add your mark all as read logic here
-    console.log("All notifications marked as read");
+  const [socialsUnreadCount, setSocialsUnreadCount] = useState(0);
+  const [remindersUnreadCount, setRemindersUnreadCount] = useState(0);
+  
+  const handleMarkAllAsRead = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+    
+    try {
+      // Create a new batch
+      const batch = writeBatch(db);
+      
+      // Get all unread reminders
+      const remindersRef = collection(db, 'users', user.uid, 'reminders');
+      const unreadQuery = query(remindersRef, where('read', '==', false), where('deleted', '==', false));
+      const unreadDocs = await getDocs(unreadQuery);
+      
+      // Update each document in the batch
+      unreadDocs.forEach(docSnap => {
+        batch.update(docSnap.ref, { read: true });
+      });
+      
+      // Commit the batch
+      await batch.commit();
+      
+      // Update local state
+      setRemindersUnreadCount(0);
+      console.log("All notifications marked as read");
+    } catch (error) {
+      console.error("Error marking notifications as read:", error);
+    }
   };
 
   useEffect(() => {
-  
-      const loadSound = async () => {
-        const { sound } = await Audio.Sound.createAsync(
-          require('../assets/images/tap.wav'),
-          { shouldPlay: false }
-        );
-        soundRef.current = sound;
-      };
-  
-      loadSound();
-  
-      return () => {
-        if (soundRef.current) {
-          soundRef.current.unloadAsync();
-        }
-      };
-    }, []);
-  
-    const playTapSound = async () => {
-      try {
-        const sound = soundRef.current;
-        if (sound) {
-          await sound.stopAsync(); // Ensure sound starts clean
-          await sound.playFromPositionAsync(0); // No delay, plays from start
-        }
-      } catch (error) {
-        console.warn('Failed to play sound', error);
+    const loadSound = async () => {
+      const { sound } = await Audio.Sound.createAsync(
+        require('../assets/images/tap.wav'),
+        { shouldPlay: false }
+      );
+      soundRef.current = sound;
+    };
+    loadSound();
+    return () => {
+      if (soundRef.current) {
+        soundRef.current.unloadAsync();
       }
     };
+  }, []);
+  useEffect(() => {
+    const fetchUnreadCounts = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+      
+      // Unread chats
+      const chatsRef = collection(db, 'chats');
+      const chatsQuery = query(chatsRef, where('users', 'array-contains', user.uid));
+      const chatSnapshots = await getDocs(chatsQuery);
+      let unreadChats = 0;
+      chatSnapshots.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.unreadCounts && data.unreadCounts[user.uid] > 0) {
+          unreadChats += 1;
+        }
+      });
+      
+      // Unread challenge invitations
+      const notificationsRef = collection(db, 'users', user.uid, 'notifications');
+      const invitesQuery = query(notificationsRef, where('type', '==', 'challenge_invitation'), where('read', '==', false));
+      const invitesSnap = await getDocs(invitesQuery);
+      const unreadInvites = invitesSnap.size;
+      setSocialsUnreadCount(unreadChats + unreadInvites);
+      
+      // Unread reminders
+      const remindersRef = collection(db, 'users', user.uid, 'reminders');
+      const remindersQuery = query(remindersRef, where('read', '==', false), where('deleted', '==', false));
+      const remindersSnap = await getDocs(remindersQuery);
+      setRemindersUnreadCount(remindersSnap.size);
+    };
+    
+    fetchUnreadCounts();
+  }, []);
+
+  const playTapSound = async () => {
+    try {
+      const sound = soundRef.current;
+      if (sound) {
+        await sound.stopAsync(); // Ensure sound starts clean
+        await sound.playFromPositionAsync(0); // No delay, plays from start
+      }
+    } catch (error) {
+      console.warn('Failed to play sound', error);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -65,7 +122,28 @@ export default function NotificationScreen() {
             {/* Reminders Category */}
             <TouchableOpacity style={styles.categoryButton}  onPress={() => router.push('/settings/reminders')}>
               <View style={styles.categoryLeft}>
-                <Ionicons name="time-outline" size={24} color="#6549FE" />
+                <View style={{ position: 'relative' }}>
+                  <Ionicons name="time-outline" size={24} color="#6549FE" />
+                  {remindersUnreadCount > 0 && (
+                    <View style={{
+                      backgroundColor: '#FF3B30',
+                      borderRadius: 12,
+                      minWidth: 18,
+                      height: 18,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      position: 'absolute',
+                      top: -10,
+                      right: -10,
+                      zIndex: 1,
+                      paddingHorizontal: 3,
+                    }}>
+                      <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 11 }}>
+                        {remindersUnreadCount > 99 ? '99+' : remindersUnreadCount}
+                      </Text>
+                    </View>
+                  )}
+                </View>
                 <Text style={styles.categoryText}>Reminders</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color="#aaa" />
@@ -74,7 +152,28 @@ export default function NotificationScreen() {
             {/* Socials Category */}
             <TouchableOpacity style={styles.categoryButton}  onPress={() => router.push('/settings/socials')}>
               <View style={styles.categoryLeft}>
-                <Ionicons name="people-outline" size={24} color="#6549FE" />
+                <View style={{ position: 'relative' }}>
+                  <Ionicons name="people-outline" size={24} color="#6549FE" />
+                  {socialsUnreadCount > 0 && (
+                    <View style={{
+                      backgroundColor: '#FF3B30',
+                      borderRadius: 12,
+                      minWidth: 18,
+                      height: 18,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      position: 'absolute',
+                      top: -10,
+                      right: -10,
+                      zIndex: 1,
+                      paddingHorizontal: 3,
+                    }}>
+                      <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 11 }}>
+                        {socialsUnreadCount > 99 ? '99+' : socialsUnreadCount}
+                      </Text>
+                    </View>
+                  )}
+                </View>
                 <Text style={styles.categoryText}>Socials</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color="#aaa" />

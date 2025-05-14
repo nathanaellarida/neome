@@ -3,17 +3,22 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Modal } from 'rea
 import { Ionicons, MaterialIcons, FontAwesome5, Entypo, Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Audio } from 'expo-av';
+import { signOut } from 'firebase/auth';
+import { auth } from '../../firebaseConfig';
 
 export default function SettingsScreen() {
   const router = useRouter();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const soundRef = useRef<Audio.Sound | null>(null);
 
-  const handleLogout = () => {
-    // Add your actual logout logic here
-    console.log("User logged out");
-    setShowLogoutModal(false);
-    // router.replace('/login'); // Uncomment to navigate to login after logout
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      setShowLogoutModal(false);
+      router.replace('/loginpage/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
   };
 
   useEffect(() => {

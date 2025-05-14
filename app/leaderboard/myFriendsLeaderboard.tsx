@@ -46,73 +46,63 @@ export default function LeaderboardScreen() {
   }, []);
 
   useEffect(() => {
-    const fetchFriends = async () => {
-      if (!currentUser) return;
-
-      try {
-        setLoading(true);
-        const friendsList: Friend[] = [];
-        
-        // Get the current user's friends
-        const userDoc = await getDoc(doc(db, 'users', currentUser.id));
-        const userData = userDoc.data();
-        const userFriends = userData?.friends || [];
-
-        // Fetch each friend's data
-        for (const friendId of userFriends) {
-          const friendDoc = await getDoc(doc(db, 'users', friendId));
-          if (friendDoc.exists()) {
-            const friendData = friendDoc.data();
-            let avatarUrl = '';
-            
-            // Get avatar URL from storage if it exists
-            if (friendData.avatar) {
-              try {
-                const imageRef = ref(storage, friendData.avatar);
-                avatarUrl = await getDownloadURL(imageRef);
-              } catch (error) {
-                console.warn('Error fetching avatar:', error);
-              }
-            }
-
-            friendsList.push({
-              id: friendId,
-              name: friendData.name || 'Unknown',
-              email: friendData.email || '',
-              points: friendData.points || 0,
-              avatar: friendData.avatar || '',
-              gender: friendData.gender || 'male',
-              overallrank: friendData.overallrank || '0',
-              avatarUrl,
-            });
-          }
-        }
-
-        // Sort friends by points in descending order
-        friendsList.sort((a, b) => b.points - a.points);
-        setFriends(friendsList);
-      } catch (error) {
-        console.error('Error fetching friends:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchFriends();
   }, [currentUser]);
 
+  const fetchFriends = async () => {
+    if (!currentUser) return;
+
+    try {
+      setLoading(true);
+      const friendsList: Friend[] = [];
+      
+      // Get the current user's friends
+      const userDoc = await getDoc(doc(db, 'users', currentUser.id));
+      const userData = userDoc.data();
+      const userFriends = userData?.friends || [];
+
+      // Fetch each friend's data
+      for (const friendId of userFriends) {
+        const friendDoc = await getDoc(doc(db, 'users', friendId));
+        if (friendDoc.exists()) {
+          const friendData = friendDoc.data();
+          let avatarUrl = '';
+          
+          // Get avatar URL from storage if it exists
+          if (friendData.avatar) {
+            try {
+              const imageRef = ref(storage, friendData.avatar);
+              avatarUrl = await getDownloadURL(imageRef);
+            } catch (error) {
+              console.warn('Error fetching avatar:', error);
+            }
+          }
+
+          friendsList.push({
+            id: friendId,
+            name: friendData.name || 'Unknown',
+            email: friendData.email || '',
+            points: friendData.points || 0,
+            avatar: friendData.avatar || '',
+            gender: friendData.gender || 'male',
+            overallrank: friendData.overallrank || '0',
+            avatarUrl,
+          });
+        }
+      }
+
+      // Sort friends by points in descending order
+      friendsList.sort((a, b) => b.points - a.points);
+      setFriends(friendsList);
+    } catch (error) {
+      console.error('Error fetching friends:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
   // Split friends into top 3 and others
   const top3 = friends.slice(0, 3);
   const others = friends.slice(3, 50);
-
-  if (loading) {
-    return (
-      <View style={[styles.root, styles.loadingContainer]}>
-        <ActivityIndicator size="large" color="#fff" />
-      </View>
-    );
-  }
-
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.safeArea}>
@@ -130,9 +120,18 @@ export default function LeaderboardScreen() {
             />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Leaderboard</Text>
+          <TouchableOpacity style={styles.refreshButton} onPress={() => fetchFriends()}>
+            <Text style={styles.refreshText}>Refresh</Text>
+          </TouchableOpacity>
         </View>
 
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#6371F7" />
+            <Text style={styles.loadingText}>Loading leaderboard...</Text>
+          </View>
+        ) : (
+          <ScrollView contentContainerStyle={styles.scrollContent}>
           {/* Header Tabs */}
           <View style={styles.tabWrapper}>
             <View style={styles.segmentBackground}>
@@ -260,43 +259,49 @@ export default function LeaderboardScreen() {
               </TouchableOpacity>
             )}
           </View>
-
+          
           {/* Player List Container */}
           <View style={styles.listContainer}>
-            {others.map((user, index) => (
-              <TouchableOpacity
-                key={user.id}
-                style={styles.playerCard}
-                onPress={() =>
-                  router.push({
-                    pathname: '../leaderboard/playerDetails',
-                    params: {
-                      id: user.id,
-                      name: user.name,
-                      email: user.email,
-                      points: user.points.toString(),
-                      gender: user.gender,
-                      overallrank: user.overallrank,
-                    },
-                  })
-                }
-              >
-                <View style={styles.rankCircle}>
-                  <Text style={styles.rankText}>{index + 4}</Text>
-                </View>
-                {user.avatarUrl ? (
-                  <Image source={{ uri: user.avatarUrl }} style={styles.playerAvatar} />
-                ) : (
-                  <Image source={require('../assets/images/leaderboard/jacob.png')} style={styles.playerAvatar} />
-                )}
-                <View>
-                  <Text style={styles.playerName}>{user.name}</Text>
-                  <Text style={styles.playerPointsText}>{user.points.toLocaleString()} points</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
+            {others.length > 0 ? (
+              others.map((user, index) => (
+                <TouchableOpacity
+                  key={user.id}
+                  style={styles.playerCard}
+                  onPress={() =>
+                    router.push({
+                      pathname: '../leaderboard/playerDetails',
+                      params: {
+                        id: user.id,
+                        name: user.name,
+                        email: user.email,
+                        points: user.points.toString(),
+                        gender: user.gender,
+                        overallrank: user.overallrank,
+                      },
+                    })
+                  }
+                >
+                  <View style={styles.rankCircle}>
+                    <Text style={styles.rankText}>{index + 4}</Text>
+                  </View>
+                  {user.avatarUrl ? (
+                    <Image source={{ uri: user.avatarUrl }} style={styles.playerAvatar} />
+                  ) : (
+                    <Image source={require('../assets/images/leaderboard/jacob.png')} style={styles.playerAvatar} />
+                  )}
+                  <View>
+                    <Text style={styles.playerName}>{user.name}</Text>
+                    <Text style={styles.playerPointsText}>{user.points.toLocaleString()} points</Text>
+                  </View>
+                </TouchableOpacity>
+              ))            ) : (
+              <View style={styles.noPlayersContainer}>
+                <Text style={styles.noPlayersText}>No other friends available</Text>
+              </View>
+            )}
           </View>
         </ScrollView>
+        )}
       </SafeAreaView>
     </View>
   );
@@ -324,10 +329,10 @@ const styles = StyleSheet.create({
     height: '100%', // fills the whole screen
     resizeMode: 'cover',
     zIndex: -1,
-  },  
-  scrollContent: {
-    paddingBottom: 0,
+  },    scrollContent: {
+    paddingBottom: 80, // Add padding to ensure content extends to the bottom
     position: 'relative',
+    flexGrow: 1, // Ensures the content takes up all available space
   },
   tabWrapper: {
     alignItems: 'center',
@@ -411,8 +416,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     fontSize: 13,
-  },
-  listContainer: {
+  },  listContainer: {
     backgroundColor: '#F3F6FF',
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
@@ -420,6 +424,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginTop: 24,
     flex: 1,
+    minHeight: 400,
+    paddingBottom: 100, // Add extra padding at the bottom
   },
   playerCard: {
     flexDirection: 'row',
@@ -470,6 +476,7 @@ const styles = StyleSheet.create({
     paddingBottom: 15,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
   backButton: {
     marginRight: 10,
@@ -477,20 +484,52 @@ const styles = StyleSheet.create({
   backArrow: {
     fontSize: 24,
     color: '#5E3EE6',
-  },
-  headerTitle: {
+  },  headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#44349B',
+    flex: 1,
   },
   backIcon: {
     width: 24,
     height: 24,
     resizeMode: 'contain',
     tintColor: '#5E3EE6', // optional: tint if the image is monochrome
-  },  
+  },  refreshButton: {
+    backgroundColor: '#6371F7',
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },  refreshText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 12,
+  },
   loadingContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderRadius: 20,
+    margin: 20,
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#6371F7',
+    fontWeight: '600',
+  },  noPlayersContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+    minHeight: 300, // Ensure minimum height when empty
+    flex: 1,
+  },
+  noPlayersText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#999',
+    textAlign: 'center',
   },
 });

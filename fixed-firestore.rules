@@ -1,0 +1,92 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Allow access to users collection
+    match /users/{userId} {
+      allow read, write: if true;
+      
+      // Permissions for friendRequests subcollection
+      match /friendRequests/{requestId} {
+        allow read, write: if true;
+      }
+
+      // Permissions for challenges subcollection
+      match /challenges/{challengeId} {
+        allow read, write: if true;
+      }
+
+      // Permissions for notifications subcollection
+      match /notifications/{notificationId} {
+        allow read, write: if true;
+      }
+      
+      // Permissions for reminders subcollection
+      match /reminders/{reminderId} {
+        allow read, write: if true;
+      }
+
+      // Permissions for mood_selections subcollection
+      match /mood_selections/{moodId} {
+        allow read, write: if true;
+      }
+
+      // Permissions for mental_states subcollection
+      match /mental_states/{stateId} {
+        allow read, write: if true;
+      }
+      
+      match /folders/{folderId} {
+        allow read, write: if true;
+        match /journals/{journalId} {
+          allow read, write: if true;
+        }
+      }
+      match /journals/{journalId} {
+        allow read, write: if true;
+      }
+      match /waterIntakeHistory/{historyId} {
+        allow read, write: if true;
+      }
+      match /foodLogs/{logId} {
+        allow read, write: if true;
+      }
+    }
+    
+    // Allow access to friends collection
+    match /friends/{friendId} {
+      allow read, write: if true;
+    }
+    
+    // Allow public read/write access to all chats and messages
+    match /chats/{chatId} {
+      allow read, write: if true;
+      match /messages/{messageId} {
+        allow read, write: if true;
+      }
+    }
+    
+    // Allow public read/write access to stickers
+    match /stickers/{stickerId} {
+      allow read, write: if true;
+    }
+    
+    match /publicData/{docId} {
+      allow read, write: if true;
+    }
+    
+    // UNSAFE FOR PRODUCTION
+    match /workouts/{workoutId} {
+      allow read, write: if true;
+    }
+    
+    match /icons/{iconId} {
+      allow read: if true;
+    }
+    
+    // Challenges collection for timer synchronization
+    match /challenges/{challengeId} {
+      allow read, write: if true;
+    }
+  }
+}

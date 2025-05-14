@@ -6,7 +6,7 @@ import { WebView } from 'react-native-webview';
 //import Svg, { Circle } from 'react-native-svg';
 import { router } from 'expo-router';
 import { auth, db, storage } from '../../firebaseConfig';
-import { doc, updateDoc, serverTimestamp, getDoc, collection, query, onSnapshot, where } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp, getDoc, collection, query, onSnapshot, where, getDocs } from 'firebase/firestore';
 import { getDownloadURL, ref } from 'firebase/storage';
 import Svg, { Circle, Text as SvgText } from 'react-native-svg';
 import { Audio } from 'expo-av';
@@ -18,12 +18,18 @@ export default function HomeScreen() {
   const [userName, setUserName] = useState('');
   const [profileImageUrl, setProfileImageUrl] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-    const soundRef = useRef<Audio.Sound | null>(null);
+  const [height, setHeight] = useState('');
+  const [weight, setWeight] = useState('');
+  const [avatarModel, setAvatarModel] = useState('femaleBody6.glb'); // Default
+  const soundRef = useRef<Audio.Sound | null>(null);
+  const [socialsUnreadCount, setSocialsUnreadCount] = useState(0);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  const [userPoints, setUserPoints] = useState('0');
+  const [waterIntake, setWaterIntake] = useState(0);
+  const [todayCalories, setTodayCalories] = useState(0);
 
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-  const avatarModel = 'femaleBody5.glb';
-  
   // Progress Circle Config
   const size = 150;
   const strokeWidth = 15;
@@ -55,6 +61,9 @@ export default function HomeScreen() {
               console.warn('Error fetching profile image:', error);
             }
           }
+          if (userData.height) setHeight(String(userData.height));
+          if (userData.weight) setWeight(String(userData.weight));
+          if (userData.points !== undefined) setUserPoints(String(userData.points));
         }
       } catch (error) {
         console.error('Error fetching user data:', error);
@@ -65,6 +74,29 @@ export default function HomeScreen() {
 
     fetchUserData();
   }, []);
+
+  // Calculate BMI and set avatar model
+  useEffect(() => {
+    if (!height || !weight) return;
+    const heightInMeters = parseFloat(height) / 100;
+    const weightInKg = parseFloat(weight);
+    const bmi = weightInKg / (heightInMeters * heightInMeters);
+
+    let newAvatar = '';
+    if (bmi < 16) newAvatar = 'femaleBody1.glb';
+    else if (bmi < 17) newAvatar = 'femaleBody2.glb';
+    else if (bmi < 18.5) newAvatar = 'femaleBody3.glb';
+    else if (bmi < 20) newAvatar = 'femaleBody4.glb';
+    else if (bmi < 22) newAvatar = 'femaleBody5.glb';
+    else if (bmi < 24) newAvatar = 'femaleBody6.glb';
+    else if (bmi < 28) newAvatar = 'femaleBody7.glb';
+    else if (bmi < 30) newAvatar = 'femaleBody8.glb';
+    else if (bmi < 32) newAvatar = 'femaleBody9.glb';
+    else if (bmi <= 35) newAvatar = 'femaleBody10.glb';
+    else newAvatar = 'femaleBody11.glb';
+
+    setAvatarModel(newAvatar);
+  }, [height, weight]);
 
   // Update lastActive timestamp
   useEffect(() => {
@@ -123,6 +155,126 @@ export default function HomeScreen() {
       }
     };
 
+  // Replace the existing useEffect for notifications with this corrected version
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    let unreadChats = 0;
+    let unreadInvites = 0;
+
+    // Listen for unread chats
+    const chatsRef = collection(db, 'chats');
+    const chatsQuery = query(chatsRef, where('users', 'array-contains', user.uid));
+    
+    const unsubscribeChats = onSnapshot(chatsQuery, (chatSnapshots) => {
+      unreadChats = 0;
+      chatSnapshots.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.unreadCounts && data.unreadCounts[user.uid] > 0) {
+          unreadChats += 1;
+        }
+      });
+      // Update total count
+      setSocialsUnreadCount(unreadChats + unreadInvites);
+    });
+
+    // Listen for unread challenge invitations
+    const notificationsRef = collection(db, 'users', user.uid, 'notifications');
+    const invitesQuery = query(notificationsRef, 
+      where('type', '==', 'challenge_invitation'), 
+      where('read', '==', false)
+    );
+
+    const unsubscribeInvites = onSnapshot(invitesQuery, (invitesSnap) => {
+      unreadInvites = invitesSnap.size;
+      // Update total count
+      setSocialsUnreadCount(unreadChats + unreadInvites);
+    });
+
+    // Cleanup listeners on unmount
+    return () => {
+      unsubscribeChats();
+      unsubscribeInvites();
+    };
+  }, []);
+
+  // Add this useEffect after the other useEffects
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    // Query for chats with unread messages
+    const chatsRef = collection(db, 'chats');
+    const chatsQuery = query(chatsRef, where('users', 'array-contains', user.uid));
+    
+    const unsubscribe = onSnapshot(chatsQuery, (snapshot) => {
+      let totalUnread = 0;
+      snapshot.forEach(doc => {
+        const chatData = doc.data();
+        if (chatData.unreadCounts && chatData.unreadCounts[user.uid]) {
+          totalUnread += chatData.unreadCounts[user.uid];
+        }
+      });
+      setUnreadMessagesCount(totalUnread);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const fetchTodayWaterIntake = async () => {
+      try {
+        const user = auth.currentUser;
+        if (!user) return;
+        const historyRef = collection(db, 'users', user.uid, 'waterIntakeHistory');
+        const querySnapshot = await getDocs(historyRef);
+        let total = 0;
+        querySnapshot.forEach(doc => {
+          const data = doc.data();
+          if (data.amount && data.time && data.time.toDate) {
+            const entryDate = data.time.toDate();
+            if (
+              entryDate.getDate() === today.getDate() &&
+              entryDate.getMonth() === today.getMonth() &&
+              entryDate.getFullYear() === today.getFullYear()
+            ) {
+              total += Number(data.amount);
+            }
+          }
+        });
+        setWaterIntake(total);
+      } catch (err) {
+        console.error('Failed to fetch today\'s water intake:', err);
+      }
+    };
+    fetchTodayWaterIntake();
+  }, []);
+
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user) return;
+    const foodLogsRef = collection(db, 'users', user.uid, 'foodLogs');
+    const unsubscribe = onSnapshot(foodLogsRef, (querySnapshot) => {
+      let total = 0;
+      querySnapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.calories && data.createdAt && data.createdAt.toDate) {
+          const entryDate = data.createdAt.toDate();
+          if (
+            entryDate.getDate() === today.getDate() &&
+            entryDate.getMonth() === today.getMonth() &&
+            entryDate.getFullYear() === today.getFullYear()
+          ) {
+            total += Number(data.calories);
+          }
+        }
+      });
+      setTodayCalories(total);
+    });
+    return () => unsubscribe();
+  }, []);
+
   return (
     <View style={styles.container}>
       {/* White Header Container */}
@@ -142,16 +294,36 @@ export default function HomeScreen() {
 
           {/* Icons */}
           <View style={styles.iconContainer}>
-          
-          <TouchableOpacity
-            onPress={async () => {
-              await playTapSound();
-              router.push("/settings/notification");
-            }}
-          >
-            <Ionicons name="notifications-outline" size={23} color="#6549FE" />
-          </TouchableOpacity>
-          <TouchableOpacity
+            <TouchableOpacity
+              onPress={async () => {
+                await playTapSound();
+                router.push("/settings/notification");
+              }}
+            >
+              <View style={{ position: 'relative' }}>
+                <Ionicons name="notifications-outline" size={23} color="#6549FE" />
+                {socialsUnreadCount > 0 && (
+                  <View style={{
+                    backgroundColor: '#FF3B30',
+                    borderRadius: 12,
+                    minWidth: 18,
+                    height: 18,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    position: 'absolute',
+                    top: -8,
+                    right: -6,
+                    zIndex: 1,
+                    paddingHorizontal: 3,
+                  }}>
+                    <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 11 }}>
+                      {socialsUnreadCount > 99 ? '99+' : socialsUnreadCount}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
               onPress={async () => {
                 await playTapSound();
                 router.push("/settings/settingDashboard");
@@ -194,15 +366,26 @@ export default function HomeScreen() {
           {/* Left: Stats */}
           <View style={styles.statsContainer}>
             {[
-              { value: '3,502', label: 'Points', image: require('../assets/images/points.png') },
-              { value: '1,350', label: 'Calories', image: require('../assets/images/calories.png') },
-              { value: '300', label: 'Energy', image: require('../assets/images/energy.png') },
+              { value: userPoints, label: 'Points', image: require('../assets/images/points.png') },
+              { value: todayCalories.toString(), label: 'Calories', image: require('../assets/images/poultryLeg.png') },
+              { value: waterIntake.toString(), label: 'Water Intake', image: require('../assets/images/droplet.png') },
               { value: '25', label: 'Badges', image: require('../assets/images/badges.png') },
               { value: '2,532', label: 'Steps', image: require('../assets/images/steps.png') },
             ].map((item, index) => (
               <View key={index} style={styles.statBox}>
-                <Image source={item.image} style={styles.statIcon} />
-                <View style={styles.textWrapper}>
+                <Image
+                  source={item.image}
+                  style={[
+                    styles.statIcon,
+                    item.label === 'Calories' && { width: 36, height: 36, marginLeft: -8, marginTop: 4 }
+                  ]}
+                />
+                <View
+                  style={[
+                    styles.textWrapper,
+                    item.label === 'Calories' && { marginLeft: -5, marginTop: 4 }
+                  ]}
+                >
                   <Text style={styles.statNumber}>{item.value}</Text>
                   <Text style={styles.statLabel}>{item.label}</Text>
                 </View>
@@ -458,7 +641,64 @@ export default function HomeScreen() {
           })}
         </ScrollView>
 
-        
+        {/* Track Food Calorie Section */}
+        <View style={styles.trackFoodCard}>
+          <Image source={require('../assets/images/TrackFood.png')} style={styles.trackFoodImage} />
+          <View style={styles.trackFoodContent}>
+            <Text style={styles.trackFoodTitle}>Stay on Track, Stay Energized!</Text>
+            <Text style={styles.trackFoodMain}>Track Food</Text>
+            <Text style={styles.trackFoodGoal}>Goal: 2,000 Calories Today!</Text>
+            <TouchableOpacity
+              style={styles.trackFoodButton}
+              onPress={async () => {
+                await playTapSound();
+                // TODO: Replace with your food tracking screen route
+                router.push('/homescreen/foodTracking');
+              }}
+            >
+              <Text style={styles.trackFoodButtonText}>Log Meal</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Drink a Water Section */}
+        <View style={styles.drinkWaterCard}>
+          <Image source={require('../assets/images/drinkWaterSection.png')} style={styles.drinkWaterImage} />
+          <View style={styles.drinkWaterContent}>
+            <Text style={styles.drinkWaterTitle}>Stay Hydrated, Stay Healthy!</Text>
+            <Text style={styles.drinkWaterMain}>Drink a Water</Text>
+            <Text style={styles.drinkWaterGoal}>Goal: 3 Liters Today! Tap to Track</Text>
+            <TouchableOpacity
+              style={styles.drinkWaterButton}
+              onPress={async () => {
+                await playTapSound();
+                router.push('/homescreen/waterIntake');
+              }}
+            >
+              <Text style={styles.drinkWaterButtonText}>Drink</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Steps Counter Section */}
+        <View style={styles.stepsCounterCard}>
+          <Image source={require('../assets/images/stepsCounter.png')} style={styles.stepsCounterImage} />
+          <View style={styles.stepsCounterContent}>
+            <Text style={styles.stepsCounterTitle}>Keep Moving, Stay Motivated!</Text>
+            <Text style={styles.stepsCounterMain}>Steps Counter</Text>
+            <Text style={styles.stepsCounterGoal}>Goal: 10,000 Steps Today!</Text>
+            <TouchableOpacity
+              style={styles.stepsCounterButton}
+              onPress={async () => {
+                await playTapSound();
+                router.push('/homescreen/stepsCounterHome');
+              }}
+            >
+              <Text style={styles.stepsCounterButtonText}>Track Steps</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Challenge Yourself Section */}
         <View style={styles.challengeContainer}>
         <Image source={require('../assets/images/challengeYourSelf.png')} style={styles.challengeImage} />
@@ -683,11 +923,35 @@ export default function HomeScreen() {
           <Ionicons name="book-outline" size={25} color="#6549FE" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navButton} onPress={async() =>{
-          await playTapSound();
-          router.push('/messaging/MessageHome');
-        } }>
-          <Ionicons name="chatbubble-ellipses-outline" size={25} color="#6549FE" />
+        <TouchableOpacity 
+          style={styles.navButton} 
+          onPress={async() =>{
+            await playTapSound();
+            router.push('/messaging/MessageHome');
+          }}
+        >
+          <View style={{ position: 'relative' }}>
+            <Ionicons name="chatbubble-ellipses-outline" size={25} color="#6549FE" />
+            {unreadMessagesCount > 0 && (
+              <View style={{
+                backgroundColor: '#FF3B30',
+                borderRadius: 12,
+                minWidth: 18,
+                height: 18,
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'absolute',
+                top: -8,
+                right: -6,
+                zIndex: 1,
+                paddingHorizontal: 3,
+              }}>
+                <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 11 }}>
+                  {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
+                </Text>
+              </View>
+            )}
+          </View>
         </TouchableOpacity>
       </View>
     </View>
@@ -1219,5 +1483,173 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: '#FF4B4B',
     zIndex: 10,
+  },
+
+  // DRINK A WATER SECTION
+  drinkWaterCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    marginHorizontal: 20,
+    marginBottom: 10,
+    height: 195,
+    position: 'relative', // Allows absolute positioning for the image
+    overflow: 'hidden', // Ensures the image stays within the rounded corners
+    alignItems: 'center', // Centers text and buttons inside
+  },
+  drinkWaterImage: {
+    width: '100%',  // Makes sure the image covers the width of the container
+    height: '100%', // Ensures the image covers the height
+    position: 'absolute',
+    resizeMode: 'stretch', // Ensures the image maintains proportions without being cropped
+  },
+  drinkWaterContent: {
+    position: 'absolute',
+    top: 10,
+    left: 20,
+    alignItems: 'flex-start',
+  },
+  drinkWaterTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 5,
+  },
+  drinkWaterMain: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 15,
+  },
+  drinkWaterGoal: {
+    fontSize: 16,
+    color: '#F0F0F0',
+    marginBottom: 10,
+  },
+  drinkWaterButton: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 25,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  drinkWaterButtonText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#6549FE',
+  },
+  
+  // STEPS COUNTER SECTION
+  stepsCounterCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    marginHorizontal: 20,
+    marginBottom: 10,
+    height: 195,
+    position: 'relative',
+    overflow: 'hidden',
+    alignItems: 'center',
+  },
+  stepsCounterImage: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
+    resizeMode: 'stretch',
+  },
+  stepsCounterContent: {
+    position: 'absolute',
+    top: 10,
+    left: 20,
+    alignItems: 'flex-start',
+  },
+  stepsCounterTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 5,
+  },
+  stepsCounterMain: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 15,
+  },
+  stepsCounterGoal: {
+    fontSize: 16,
+    color: '#F0F0F0',
+    marginBottom: 10,
+  },
+  stepsCounterButton: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 25,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  stepsCounterButtonText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#4CD964',
+  },
+
+  // TRACK FOOD CALORIE SECTION
+  trackFoodCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    marginHorizontal: 20,
+    marginBottom: 10,
+    height: 195,
+    position: 'relative', // Allows absolute positioning for the image
+    overflow: 'hidden', // Ensures the image stays within the rounded corners
+    alignItems: 'center', // Centers text and buttons inside
+  },
+  trackFoodImage: {
+    width: '100%',  // Makes sure the image covers the width of the container
+    height: '100%', // Ensures the image covers the height
+    position: 'absolute',
+    resizeMode: 'stretch', // Ensures the image maintains proportions without being cropped
+  },
+  trackFoodContent: {
+    position: 'absolute',
+    top: 10,
+    left: 20,
+    alignItems: 'flex-start',
+  },
+  trackFoodTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 5,
+  },
+  trackFoodMain: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 15,
+  },
+  trackFoodGoal: {
+    fontSize: 16,
+    color: '#F0F0F0',
+    marginBottom: 10,
+  },
+  trackFoodButton: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 25,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  trackFoodButtonText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#6549FE',
   },
 });

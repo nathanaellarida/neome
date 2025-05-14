@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Dimensions } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons'; // ✅ Import for checkmark
+import { Ionicons } from '@expo/vector-icons';
 
 export default function UserDataScreen8() {
   const { width, height } = Dimensions.get('window');
@@ -9,46 +9,54 @@ export default function UserDataScreen8() {
   const scaleHeight = height / 1920;
   const router = useRouter();
 
-  // 🔥 Track selected buttons
   const [selected, setSelected] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
 
   const toggleSelection = (goal: string) => {
     if (selected.includes(goal)) {
-      setSelected(selected.filter((item) => item !== goal)); // Remove if already selected
+      setSelected(selected.filter((item) => item !== goal));
     } else {
-      setSelected([...selected, goal]); // Add if not selected
+      setSelected([...selected, goal]);
     }
+  };
+
+  const handleBack = () => {
+    router.back();
+  };
+
+  // Dummy save function for consistency with wellnessgoals (can be replaced with Firestore logic if needed)
+  const handleFinish = async () => {
+    setSaving(true);
+    setTimeout(() => {
+      setSaving(false);
+      router.push('/homescreen/HomeScreen');
+    }, 500); // Simulate async
   };
 
   return (
     <View style={styles.container}>
-      {/* 🔙 Back Button */}
-      <TouchableOpacity
-        style={[styles.backButton, { top: 65 * scaleHeight, left: 40 * scaleWidth }]}
-        onPress={() => router.back()}
+      {/* Back Button */}
+      <TouchableOpacity 
+        style={styles.backButton} 
+        onPress={handleBack}
       >
-        <Text style={[styles.backButtonText, { fontSize: 100 * scaleWidth, top: -20 * scaleHeight }]}>←</Text>
+        <Ionicons name="arrow-back" size={24} color="#6549FE" />
       </TouchableOpacity>
 
-      {/* Progress Bar */}
-      <View style={[styles.progressBarContainer, { top: 95 * scaleHeight, right: 60 * scaleWidth }]}>
-        <Text style={[styles.progressText, { fontSize: 40 * scaleWidth }]}>8/8</Text>
+      {/* Progress Container */}
+      <View style={styles.progressContainer}>
+        <View style={styles.progressBarBackground}>
+          <View style={styles.progressBarFill} />
+        </View>
+        <Text style={styles.progressText}>9/9</Text>
       </View>
 
-      {/* Progress Bar Status */}
-      <View style={[styles.progressStatus, { top: 105 * scaleHeight, left: 180 * scaleWidth }]}></View>
-
-      {/* Progress Bar Status Colored */}
-      <View style={[styles.progressStatusColored, { top: 72 * scaleHeight, left: 180 * scaleWidth }]}></View>
-
       {/* Title */}
-      <Text style={[styles.title, { top: 244 * scaleHeight, fontSize: 75 * scaleWidth }]}>
-        Mental Health & Stress Information
-      </Text>
+      <Text style={styles.title}>Mental Health & Stress Information</Text>
 
       {/* Subtitle */}
-      <Text style={[styles.subtitle, { top: 450 * scaleHeight, fontSize: 50 * scaleWidth }]}>
-        Used to help track and recommend          appropriate mental health and emotional well-being activities.
+      <Text style={styles.subtitle}>
+        Used to help track and recommend appropriate mental health and emotional well-being activities.
       </Text>
 
       {/* Buttons for Mental Health Goals */}
@@ -67,105 +75,122 @@ export default function UserDataScreen8() {
             <Text style={[styles.buttonText, selected.includes(goal) && styles.selectedButtonText]}>
               {goal}
             </Text>
-            {/* ✅ Checkmark appears only when selected */}
             {selected.includes(goal) && <Ionicons name="checkmark" size={24} color="white" style={styles.checkIcon} />}
           </TouchableOpacity>
         ))}
       </View>
 
       {/* Finish Button */}
-      <TouchableOpacity
-        style={[styles.nextButton, { left: 162 * scaleWidth, top: 1681 * scaleHeight, width: 757 * scaleWidth, height: 135 * scaleHeight }]}
-        onPress={() => router.push('/homescreen/HomeScreen')}
+      <TouchableOpacity 
+        style={[styles.nextButton, !selected.length && styles.disabledButton]} 
+        onPress={handleFinish}
+        disabled={!selected.length || saving}
       >
-        <Text style={[styles.nextButtonText, { fontSize: 48 * scaleWidth }]}>Finish</Text>
+        {saving ? (
+          <ActivityIndicator color="#FFFFFF" />
+        ) : (
+          <Text style={styles.nextButtonText}>
+            {!selected.length ? "Select Option(s)" : "Finish"}
+          </Text>
+        )}
       </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
-
-  progressStatus: {
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    padding: 20,
+  },
+  backButton: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    zIndex: 1,
+    padding: 10,
+  },
+  progressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginTop: 40,
+    marginRight: 20,
+    gap: 10,
+  },
+  progressBarBackground: {
     width: 240,
     height: 12,
     backgroundColor: '#F3F6FF',
-    justifyContent: 'center',
     borderRadius: 80,
+    overflow: 'hidden',
   },
-  progressStatusColored: {
-    width: 240,
-    height: 12,
+  progressBarFill: {
+    width: '100%', // 9/9 = 100%
+    height: '100%',
     backgroundColor: '#6549FE',
     borderRadius: 80,
   },
-  progressBarContainer: { position: 'absolute' },
-  progressText: { fontWeight: '600', color: '#6549FE' },
-  title: {
-    position: 'absolute',
+  progressText: {
+    fontSize: 16,
     fontWeight: '600',
     color: '#6549FE',
-    width: '100%',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#6549FE',
     textAlign: 'center',
+    marginTop: 50,
   },
   subtitle: {
-    position: 'absolute',
+    fontSize: 16,
     color: '#AEAEAE',
-    width: '100%',
     textAlign: 'center',
+    marginTop: 8,
+    paddingHorizontal: 40,
   },
-
-  /* 🔲 Buttons Section */
   buttonContainer: {
-    marginTop: 230,
+    marginTop: 30,
     alignItems: 'center',
     width: '100%',
   },
   bodyTypeButton: {
     width: 250,
-    height: 70,
+    height: 60,
     backgroundColor: '#FFFFFF',
     borderRadius: 67,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
-    flexDirection: 'row', // ✅ Allows text + checkmark in the same row
-    paddingHorizontal: 20, // ✅ Padding for spacing
+    marginBottom: 12,
+    flexDirection: 'row',
+    paddingHorizontal: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 5,
   },
-
   buttonText: { fontSize: 20, fontWeight: '600', color: '#6549FE' },
-
-  /* 🔥 Selected Button Styles */
   selectedButton: { backgroundColor: '#6549FE' },
   selectedButtonText: { color: '#FFFFFF' },
-
-  /* ✅ Checkmark Icon */
   checkIcon: { position: 'absolute', right: 20 },
-
   nextButton: {
-    position: 'absolute',
     backgroundColor: '#6549FE',
-    justifyContent: 'center',
+    paddingVertical: 15,
+    borderRadius: 25,
     alignItems: 'center',
-    borderRadius: 67,
-  },
-  nextButtonText: { fontWeight: '600', color: '#FFFFFF' },
-
-  /* 🔙 Back Button Styles */
-  backButton: {
-    position: 'absolute',
-    backgroundColor: '#F3F6FF',
-    width: 40,
-    height: 40,
     justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 100,
+    marginTop: 30,
+    marginHorizontal: 20,
   },
-  backButtonText: { fontWeight: 'bold', color: '#6549FE' },
+  nextButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  disabledButton: {
+    backgroundColor: '#C4C4C4',
+  },
 });

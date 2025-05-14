@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>NeomeAI Chatbot</title>
   <style>
     :root {
@@ -805,14 +805,7 @@
       if (savedChats) {
         chats = JSON.parse(savedChats);
         updateChatHistoryUI();
-      } else {
-        // Initialize with empty chat
-        chats[currentChatId] = {
-          messages: [],
-          title: "New Chat",
-          timestamp: Date.now()
-        };
-      }
+      } // Do not auto-create a new chat here
     }
 
     // Modify the updateChatHistoryUI function to use our custom modal
@@ -820,8 +813,10 @@
       const chatHistory = document.getElementById('chat-history');
       chatHistory.innerHTML = '';
       
-      // Sort chats by timestamp (newest first)
-      const sortedChats = Object.entries(chats).sort((a, b) => b[1].timestamp - a[1].timestamp);
+      // Only show chats with at least one message
+      const sortedChats = Object.entries(chats)
+        .filter(([id, chat]) => chat.messages && chat.messages.length > 0)
+        .sort((a, b) => b[1].timestamp - a[1].timestamp);
       
       if (sortedChats.length === 0) {
         chatHistory.innerHTML = `
@@ -910,6 +905,7 @@
     }
 
     function addMessage(text, isUser, saveToHistory = true) {
+      console.log('addMessage called:', { text, isUser, currentChatId, messages: chats[currentChatId]?.messages });
       if (!hasMessages) {
         const introContainer = document.getElementById('intro-container');
         if (introContainer) {
@@ -928,36 +924,35 @@
       setTimeout(() => {
           container.scrollTop = container.scrollHeight;
         }, 100);
-      }
+    }
 
-      if (saveToHistory) {
-        // Update chat title if this is the first message from user
-        if (!chats[currentChatId].messages || chats[currentChatId].messages.length === 0) {
-          const title = text.length > 30 ? text.substring(0, 30) + "..." : text;
-          chats[currentChatId].title = title;
-        }
-        
-        // Make sure messages array exists
-        if (!chats[currentChatId].messages) {
-          chats[currentChatId].messages = [];
-        }
-        
-        // Add message to chat history
-        chats[currentChatId].messages.push({
-          text,
-          isUser
-        });
-        
-        // Update timestamp
-        chats[currentChatId].timestamp = Date.now();
-        
-        // Update UI and save to localStorage
-        updateChatHistoryUI();
-        localStorage.setItem('neomeai_chats', JSON.stringify(chats));
+    if (saveToHistory) {
+      if (!chats[currentChatId]) {
+        chats[currentChatId] = { messages: [] };
       }
+      if (!Array.isArray(chats[currentChatId].messages)) {
+        chats[currentChatId].messages = [];
+      }
+      chats[currentChatId].messages.push({
+        text,
+        isUser,
+        timestamp: Date.now()
+      });
+      
+      // Update chat title if this is the first message from user
+      if (chats[currentChatId].messages.length === 1) {
+        const title = text.length > 30 ? text.substring(0, 30) + "..." : text;
+        chats[currentChatId].title = title;
+      }
+      
+      chats[currentChatId].timestamp = Date.now();
+      updateChatHistoryUI();
+      localStorage.setItem('neomeai_chats', JSON.stringify(chats));
+    }
 
     async function sendMessage() {
       const userInput = document.getElementById("userInput").value.trim();
+      console.log('sendMessage userInput:', userInput);
       if (!userInput) return;
 
       addMessage(userInput, true);
@@ -986,6 +981,12 @@
         hideTypingIndicator();
         addMessage(botReply, false);
 
+        // Log messages array before saving
+        console.log('Before saving, messages:', chats[currentChatId]?.messages);
+
+        // Save after both messages are added
+        saveConversationToNative();
+
         if (window.ReactNativeWebView) {
           window.ReactNativeWebView.postMessage(botReply);
         }
@@ -994,9 +995,10 @@
         hideTypingIndicator();
         addMessage(`Error: ${error.message}`, false);
         console.error("API Error:", error);
+        // Save even if there's an error
+        saveConversationToNative();
       } finally {
         document.getElementById("sendButton").disabled = false;
-        // Save the chat after each interaction
         localStorage.setItem('neomeai_chats', JSON.stringify(chats));
       }
     }
@@ -1043,6 +1045,22 @@
         history.back();
       }
     });
+  </script>
+
+  <script>
+    function saveConversationToNative() {
+      if (window.ReactNativeWebView) {
+        let messages = chats[currentChatId]?.messages;
+        if (!Array.isArray(messages)) messages = [];
+        console.log('Current chatId:', currentChatId);
+        console.log('All chats:', chats);
+        console.log('Saving messages:', messages);
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          action: 'saveConversation',
+          messages: messages
+        }));
+      }
+    }
   </script>
 </body>
 </html>
