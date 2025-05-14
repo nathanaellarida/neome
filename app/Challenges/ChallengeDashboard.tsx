@@ -374,12 +374,17 @@ export default function HomeScreen() {
           <Image source={require('../assets/images/challenges/trophy.png')} style={styles.trophyImage} />
         </ImageBackground>
 
-        <Text style={styles.progressTitle}>My Progress</Text>
-
-        {/* Loading State */}
+        <Text style={styles.progressTitle}>My Progress</Text>        {/* Loading State */}
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#6549FE" />
+          </View>
+        ) : challenges.length === 0 ? (
+          /* No challenges message */
+          <View style={styles.emptyStateContainer}>
+            <Ionicons name="fitness-outline" size={60} color="#D0D0D0" />
+            <Text style={styles.emptyStateText}>No Challenges Yet</Text>
+            <Text style={styles.emptyStateSubText}>Click "+" button to add.</Text>
           </View>
         ) : (
           /* Render Challenge Cards */
@@ -478,12 +483,32 @@ const { width } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F3F6FF' },
-  scrollContainer: { paddingBottom: 100 },
-  loadingContainer: {
+  scrollContainer: { paddingBottom: 100 },  loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     minHeight: 200,
+  },
+  emptyStateContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: 200,
+    backgroundColor: '#F8F9FE',
+    borderRadius: 20,
+    marginHorizontal: 20,
+    paddingVertical: 40,
+  },
+  emptyStateText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#6549FE',
+    marginTop: 15,
+  },
+  emptyStateSubText: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 5,
   },
   headerContainer: {
     flexDirection: 'row',
