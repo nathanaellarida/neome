@@ -97,10 +97,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   image: {
-    width: width * 1.0,
-    height: height * 0.9,
-    resizeMode: 'contain',
+    width: width * 2,
+    height: height * 1.1,
+    resizeMode: 'cover',
     padding: 190,
+    marginTop: -100,
   },
   skipButton: {
     position: 'absolute',
