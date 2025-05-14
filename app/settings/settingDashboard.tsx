@@ -1,24 +1,65 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Modal } from 'react-native';
 import { Ionicons, MaterialIcons, FontAwesome5, Entypo, Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { Audio } from 'expo-av';
+import { signOut } from 'firebase/auth';
+import { auth } from '../../firebaseConfig';
 
 export default function SettingsScreen() {
   const router = useRouter();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const soundRef = useRef<Audio.Sound | null>(null);
 
-  const handleLogout = () => {
-    // Add your actual logout logic here
-    console.log("User logged out");
-    setShowLogoutModal(false);
-    // router.replace('/login'); // Uncomment to navigate to login after logout
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      setShowLogoutModal(false);
+      router.replace('/loginpage/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
   };
+
+  useEffect(() => {
+    
+        const loadSound = async () => {
+          const { sound } = await Audio.Sound.createAsync(
+            require('../assets/images/tap.wav'),
+            { shouldPlay: false }
+          );
+          soundRef.current = sound;
+        };
+    
+        loadSound();
+    
+        return () => {
+          if (soundRef.current) {
+            soundRef.current.unloadAsync();
+          }
+        };
+      }, []);
+    
+      const playTapSound = async () => {
+        try {
+          const sound = soundRef.current;
+          if (sound) {
+            await sound.stopAsync(); // Ensure sound starts clean
+            await sound.playFromPositionAsync(0); // No delay, plays from start
+          }
+        } catch (error) {
+          console.warn('Failed to play sound', error);
+        }
+      };
 
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={async() => {
+          await playTapSound();
+          router.back();
+        } }>
           <Ionicons name="arrow-back-outline" size={22} color="#6549FE" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Settings</Text>

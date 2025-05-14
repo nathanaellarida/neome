@@ -39,7 +39,7 @@ export default function Login() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        router.push("/onboarding/OnboardingScreen");
+        router.push("/homescreen/HomeScreen");
       }
     });
     return () => unsubscribe();
@@ -69,7 +69,6 @@ export default function Login() {
         });
       }
       
-      Alert.alert("Success", "Login Successful! 🎉");
       router.push("/homescreen/HomeScreen");
     } catch (error) {
       const errorMessage = (error as any)?.message || "An unknown error occurred.";

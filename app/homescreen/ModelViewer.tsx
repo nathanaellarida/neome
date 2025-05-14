@@ -1,19 +1,56 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { WebView } from 'react-native-webview';
-import { View, TextInput, Button, StyleSheet } from 'react-native';
+import { View, TextInput, Button, StyleSheet, ActivityIndicator } from 'react-native';
+import { db, auth } from '../../firebaseConfig';
+import { doc, getDoc } from 'firebase/firestore';
 
 export default function ModelViewer() {
   const [height, setHeight] = useState('');
   const [weight, setWeight] = useState('');
   const [avatarModel, setAvatarModel] = useState('femaleBody6.glb'); // Default middle avatar
   const [avatarScale, setAvatarScale] = useState(1); // Default scale
+  const [loading, setLoading] = useState(true);
+
+  // Fetch user height and weight from Firestore on mount
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+          setLoading(false);
+          return;
+        }
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          if (data.height) setHeight(String(data.height));
+          if (data.weight) setWeight(String(data.weight));
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUserData();
+  }, []);
+
+  // Auto-generate avatar when height and weight are loaded
+  useEffect(() => {
+    if (height && weight && !loading) {
+      calculateBMIAndSetAvatar();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [height, weight, loading]);
 
   // Function to calculate BMI and return appropriate avatar
   const calculateBMIAndSetAvatar = () => {
+    // Height should be in centimeters, weight in kilograms
     if (!height || !weight) return;
     
-    const heightInMeters = parseFloat(height) / 100;
-    const weightInKg = parseFloat(weight);
+    const heightInMeters = parseFloat(height) / 100; // cm to meters
+    const weightInKg = parseFloat(weight); // already in kg
     const bmi = weightInKg / (heightInMeters * heightInMeters);
     
     // Avatar selection based on BMI
@@ -27,7 +64,7 @@ export default function ModelViewer() {
     else if (bmi < 28) newAvatar = 'femaleBody7.glb';
     else if (bmi < 30) newAvatar = 'femaleBody8.glb';
     else if (bmi < 32) newAvatar = 'femaleBody9.glb';
-    else if (bmi < 35) newAvatar = 'femaleBody10.glb';
+    else if (bmi <= 35) newAvatar = 'femaleBody10.glb'; // <= 35 for correct mapping
     else newAvatar = 'femaleBody11.glb';
     
     // Calculate avatar scale based on height (reference height of 160cm)
@@ -123,6 +160,7 @@ export default function ModelViewer() {
           keyboardType="numeric"
           value={height}
           onChangeText={setHeight}
+          editable={false}
         />
         <TextInput
           style={styles.input}
@@ -130,27 +168,35 @@ export default function ModelViewer() {
           keyboardType="numeric"
           value={weight}
           onChangeText={setWeight}
+          editable={false}
         />
         <Button
           title="Generate Avatar"
           onPress={calculateBMIAndSetAvatar}
+          disabled={true}
         />
       </View>
-      <View style={styles.webviewContainer}>
-        <WebView
-          originWhitelist={['https://*']}
-          javaScriptEnabled={true}
-          domStorageEnabled={true}
-          allowsFullscreenVideo={true}
-          mediaPlaybackRequiresUserAction={false}
-          source={{ html: generateHTML() }}
-          style={styles.webview}
-          onError={(syntheticEvent) => {
-            const { nativeEvent } = syntheticEvent;
-            console.error('WebView error: ', nativeEvent);
-          }}
-        />
-      </View>
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#6549FE" />
+        </View>
+      ) : (
+        <View style={styles.webviewContainer}>
+          <WebView
+            originWhitelist={['https://*']}
+            javaScriptEnabled={true}
+            domStorageEnabled={true}
+            allowsFullscreenVideo={true}
+            mediaPlaybackRequiresUserAction={false}
+            source={{ html: generateHTML() }}
+            style={styles.webview}
+            onError={(syntheticEvent) => {
+              const { nativeEvent } = syntheticEvent;
+              console.error('WebView error: ', nativeEvent);
+            }}
+          />
+        </View>
+      )}
     </View>
   );
 }
@@ -185,5 +231,11 @@ const styles = StyleSheet.create({
   },
   webview: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
   },
 });

@@ -1,7 +1,33 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Dimensions } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Dimensions, ActivityIndicator, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons'; // ✅ Import for checkmark
+// Add Firebase imports
+import { auth, db } from '../../firebaseConfig';
+import { doc, updateDoc } from 'firebase/firestore';
+
+const activityLevels = [
+  {
+    title: "Sedentary",
+    subtitle: "Little or no exercise",
+  },
+  {
+    title: "Light Active",
+    subtitle: "Light exercise/sports 1-3 days a week",
+  },
+  {
+    title: "Moderate Active",
+    subtitle: "Moderate exercise/sports 3-5 days a week",
+  },
+  {
+    title: "Very Active",
+    subtitle: "Hard exercise/sports 6-7 days a week",
+  },
+  {
+    title: "Super Active",
+    subtitle: "Very hard exercise/sports & physical job",
+  },
+];
 
 export default function UserDataScreen5() {
   const { width, height } = Dimensions.get('window');
@@ -11,112 +37,166 @@ export default function UserDataScreen5() {
 
   // 🔥 Track selected button
   const [selected, setSelected] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const handleBack = () => {
+    router.back();
+  };
+
+  // Save activity level to Firestore
+  const handleNext = async () => {
+    if (!selected) return;
+    setSaving(true);
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        Alert.alert('Error', 'User not authenticated.');
+        setSaving(false);
+        return;
+      }
+      const userDocRef = doc(db, 'users', user.uid);
+      await updateDoc(userDocRef, {
+        activitylevel: selected,
+      });
+      setSaving(false);
+      router.push('/neome_userdata_app/wellnessgoals');
+    } catch (error) {
+      setSaving(false);
+      Alert.alert('Error', 'Failed to save activity level. Please try again.');
+      console.error('Error updating activity level:', error);
+    }
+  };
 
   return (
     <View style={styles.container}>
-      {/* 🔙 Back Button */}
-      <TouchableOpacity
-        style={[styles.backButton, { top: 65 * scaleHeight, left: 40 * scaleWidth }]}
-        onPress={() => router.back()}
+      {/* Back Button */}
+      <TouchableOpacity 
+        style={styles.backButton} 
+        onPress={handleBack}
       >
-        <Text style={[styles.backButtonText, { fontSize: 100 * scaleWidth, top: -20 * scaleHeight }]}>←</Text>
+        <Ionicons name="arrow-back" size={24} color="#6549FE" />
       </TouchableOpacity>
 
-      {/* Progress Bar */}
-      <View style={[styles.progressBarContainer, { top: 95 * scaleHeight, right: 60 * scaleWidth }]}>
-        <Text style={[styles.progressText, { fontSize: 40 * scaleWidth }]}>5/8</Text>
+      {/* Progress Container */}
+      <View style={styles.progressContainer}>
+        <View style={styles.progressBarBackground}>
+          <View style={styles.progressBarFill} />
+        </View>
+        <Text style={styles.progressText}>6/9</Text>
       </View>
 
-      {/* Progress Bar Status */}
-      <View style={[styles.progressStatus, { top: 105 * scaleHeight, left: 180 * scaleWidth }]}></View>
-
-      {/* Progress Bar Status Colored */}
-      <View style={[styles.progressStatusColored, { top: 72 * scaleHeight, left: 180 * scaleWidth }]}></View>
-
       {/* Title */}
-      <Text style={[styles.title, { top: 244 * scaleHeight, fontSize: 75 * scaleWidth }]}>
-        Activity Level
-      </Text>
+      <Text style={styles.title}>Activity Level</Text>
 
       {/* Subtitle */}
-      <Text style={[styles.subtitle, { top: 362 * scaleHeight, fontSize: 50 * scaleWidth }]}>
+      <Text style={styles.subtitle}>
         This is essential for calculating baseline recommendations such as calorie goals and workout intensity.
       </Text>
 
       {/* Buttons for Activity Level */}
       <View style={styles.buttonContainer}>
-        {["Sedentary", "Light Active", "Moderate Active", "Very Active", "Super Active"].map((type) => (
+        {activityLevels.map(({ title, subtitle }) => (
           <TouchableOpacity
-            key={type}
-            style={[styles.bodyTypeButton, selected === type && styles.selectedButton]}
-            onPress={() => setSelected(selected === type ? null : type)}
+            key={title}
+            style={[styles.bodyTypeButton, selected === title && styles.selectedButton]}
+            onPress={() => setSelected(selected === title ? null : title)}
           >
-            <Text style={[styles.buttonText, selected === type && styles.selectedButtonText]}>
-              {type}
-            </Text>
+            <View style={{ alignItems: 'center', flex: 1 }}>
+              <Text style={[styles.buttonText, selected === title && styles.selectedButtonText]}>
+                {title}
+              </Text>
+              <Text style={styles.subtitleText}>{subtitle}</Text>
+            </View>
             {/* ✅ Checkmark appears only when selected */}
-            {selected === type && <Ionicons name="checkmark" size={24} color="white" style={styles.checkIcon} />}
+            {selected === title && <Ionicons name="checkmark" size={24} color="white" style={styles.checkIcon} />}
           </TouchableOpacity>
         ))}
       </View>
 
       {/* Next Button */}
-      <TouchableOpacity
-        style={[styles.nextButton, { left: 162 * scaleWidth, top: 1681 * scaleHeight, width: 757 * scaleWidth, height: 135 * scaleHeight }]}
-        onPress={() => router.push('/neome_userdata_app/wellnessgoals')}
+      <TouchableOpacity 
+        style={[styles.nextButton, !selected && styles.disabledButton]} 
+        onPress={handleNext}
+        disabled={!selected || saving}
       >
-        <Text style={[styles.nextButtonText, { fontSize: 48 * scaleWidth }]}>Next</Text>
+        {saving ? (
+          <ActivityIndicator color="#FFFFFF" />
+        ) : (
+          <Text style={styles.nextButtonText}>
+            {!selected ? "Select Activity Level" : "Save & Continue"}
+          </Text>
+        )}
       </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
-
-  progressStatus: {
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    padding: 20,
+  },
+  backButton: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    zIndex: 1,
+    padding: 10,
+  },
+  progressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginTop: 40,
+    marginRight: 20,
+    gap: 10,
+  },
+  progressBarBackground: {
     width: 240,
     height: 12,
     backgroundColor: '#F3F6FF',
-    justifyContent: 'center',
     borderRadius: 80,
+    overflow: 'hidden',
   },
-  progressStatusColored: {
-    width: 140,
-    height: 12,
+  progressBarFill: {
+    width: '66.67%', // 6/9 = ~66.67%
+    height: '100%',
     backgroundColor: '#6549FE',
     borderRadius: 80,
   },
-  progressBarContainer: { position: 'absolute' },
-  progressText: { fontWeight: '600', color: '#6549FE' },
-  title: {
-    position: 'absolute',
+  progressText: {
+    fontSize: 16,
     fontWeight: '600',
     color: '#6549FE',
-    width: '100%',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#6549FE',
     textAlign: 'center',
+    marginTop: 50,
   },
   subtitle: {
-    position: 'absolute',
+    fontSize: 16,
     color: '#AEAEAE',
-    width: '100%',
     textAlign: 'center',
+    marginTop: 8,
+    paddingHorizontal: 40,
   },
-
-  /* 🔲 Buttons Section */
   buttonContainer: {
-    marginTop: 185,
+    marginTop: 30,
     alignItems: 'center',
     width: '100%',
   },
   bodyTypeButton: {
-    width: 250,
+    width: 280,
     height: 60,
     backgroundColor: '#FFFFFF',
     borderRadius: 67,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 15,
     flexDirection: 'row', // ✅ Allows text + checkmark in the same row
     paddingHorizontal: 20, // ✅ Padding for spacing
     shadowColor: '#000',
@@ -125,8 +205,8 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
-
-  buttonText: { fontSize: 20, fontWeight: '600', color: '#6549FE' },
+  buttonText: { fontSize: 18, fontWeight: '600', color: '#6549FE', textAlign: 'center' },
+  subtitleText: { fontSize: 13, color: '#AEAEAE', textAlign: 'center', marginTop: 2 },
 
   /* 🔥 Selected Button Styles */
   selectedButton: { backgroundColor: '#6549FE' },
@@ -136,23 +216,20 @@ const styles = StyleSheet.create({
   checkIcon: { position: 'absolute', right: 20 },
 
   nextButton: {
-    position: 'absolute',
     backgroundColor: '#6549FE',
-    justifyContent: 'center',
+    paddingVertical: 15,
+    borderRadius: 25,
     alignItems: 'center',
-    borderRadius: 67,
-  },
-  nextButtonText: { fontWeight: '600', color: '#FFFFFF' },
-
-  /* 🔙 Back Button Styles */
-  backButton: {
-    position: 'absolute',
-    backgroundColor: '#F3F6FF',
-    width: 40,
-    height: 40,
     justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 100,
+    marginTop: 30,
+    marginHorizontal: 20,
   },
-  backButtonText: { fontWeight: 'bold', color: '#6549FE' },
+  nextButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  disabledButton: {
+    backgroundColor: '#C4C4C4',
+  },
 });

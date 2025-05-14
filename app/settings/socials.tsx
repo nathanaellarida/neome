@@ -1,23 +1,266 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { db, auth, storage } from '../../firebaseConfig';
+import { collection, query, where, getDocs, doc, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { ref, getDownloadURL } from 'firebase/storage';
+
+// Define Social type
+interface Social {
+  id: string;
+  senderName: string;
+  senderAvatar: string | null;
+  message: string;
+  time: string;
+  category: 'new' | 'earlier';
+  friendId: string;
+}
+
+// Helper to parse challenge invitation message
+function parseChallengeInvitation(message: string) {
+  if (!message.startsWith('challenge_invitation:')) return null;
+  try {
+    const json = message.replace('challenge_invitation:', '');
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
+// Render notification/message card for Socials
+function renderNotification(social: Social, router: any) {
+  // Unread if category is 'new'
+  const isUnread = social.category === 'new';
+  const unreadStyle = { color: '#000', fontWeight: 'bold' as 'bold' };
+  const senderNameStyle = [styles.senderName, isUnread && unreadStyle];
+  const messageTextStyle = [styles.messageText, isUnread && unreadStyle];
+  const messageTimeStyle = [styles.messageTime, isUnread && unreadStyle];
+  const challenge = parseChallengeInvitation(social.message);
+  const handlePress = async () => {
+    if (isUnread) {
+      // Mark as read in Firestore
+      try {
+        const user = auth.currentUser;
+        if (user) {
+          const chatRef = doc(db, 'chats', social.id);
+          await updateDoc(chatRef, {
+            [`unreadCounts.${user.uid}`]: 0
+          });
+        }
+      } catch (e) {
+        // Optionally handle error
+      }
+    }
+    // Route to ChatScreen
+    router.push({
+      pathname: '/messaging/ChatScreen',
+      params: {
+        chatId: social.id,
+        receiverId: social.friendId || '',
+      },
+    });
+  };
+  return (
+    <TouchableOpacity key={social.id} style={styles.socialCard} onPress={handlePress}>
+      <View style={styles.profileContainer}>
+        {/* Profile Picture */}
+        {social.senderAvatar ? (
+          <Image source={{ uri: social.senderAvatar }} style={styles.profilePic} />
+        ) : (
+          <View style={styles.profilePic} />
+        )}
+        <View style={styles.textContainer}>
+          <Text style={senderNameStyle}>{social.senderName}</Text>
+          {challenge ? (
+            <Text style={messageTextStyle}>
+              {`${social.senderName} invited you to join "${challenge.challengeName}" challenge for ${challenge.challengeDays} days, ${challenge.challengeMins} mins per day`}
+              {"\n"}Tap here to view!
+            </Text>
+          ) : (
+            <Text style={messageTextStyle}>
+              {social.senderName} just sent you a message: "{social.message}"
+              {"\n"}Tap here to reply!
+            </Text>
+          )}
+          <Text style={messageTimeStyle}>{social.time}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
 
 export default function SocialsScreen() {
   const router = useRouter();
+  const [socials, setSocials] = useState<Social[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [invitations, setInvitations] = useState<any[]>([]);
+  const [loadingInvitations, setLoadingInvitations] = useState(true);
 
-  // Sample social messages data
-  const [socials, setSocials] = useState([
-    { id: '1', senderName: 'Jhoanne', message: "Katulogon nako bro", time: '2025-04-09 08:30 AM', category: 'new' },
-    { id: '2', senderName: 'Lowela', message: "Let's catch up tomorrow", time: '2025-04-08 07:00 PM', category: 'earlier' },
-    { id: '3', senderName: 'Matt', message: "Good morning! How are you?", time: '2025-04-08 02:00 PM', category: 'new' },
-    { id: '4', senderName: 'Nathanael', message: "Lunch later?", time: '2025-04-07 09:00 AM', category: 'earlier' },
-    { id: '5', senderName: 'Virginia', message: "Matulog na guro ta uy?", time: '2025-04-07 09:00 AM', category: 'new' },
-  ]);
+  useEffect(() => {
+    const fetchSocials = async () => {
+      setLoading(true);
+      const user = auth.currentUser;
+      if (!user) {
+        setSocials([]);
+        setLoading(false);
+        return;
+      }
+      try {
+        const chatsRef = collection(db, 'chats');
+        const q = query(chatsRef, where('users', 'array-contains', user.uid));
+        const chatSnapshots = await getDocs(q);
+        const socialsArr = [];
+        for (const chatDoc of chatSnapshots.docs) {
+          const chatData = chatDoc.data();
+          const lastMessage = chatData.lastMessage;
+          const lastSender = chatData.lastSender;
+          const updatedAt = chatData.updatedAt;
+          const unreadCount = chatData.unreadCounts?.[user.uid] || 0;
+          const friendId = (chatData.users || []).find((id: string) => id !== user.uid);
+          if (!friendId) continue;
+
+          // Fetch friend profile
+          let friendName = 'Unknown';
+          let friendAvatar = null;
+          try {
+            const friendDoc = await getDoc(doc(db, 'users', friendId));
+            if (friendDoc.exists()) {
+              const friendData = friendDoc.data();
+              friendName = friendData.name || 'Unknown';
+              if (friendData.avatar) {
+                try {
+                  const avatarRef = ref(storage, friendData.avatar);
+                  friendAvatar = await getDownloadURL(avatarRef);
+                } catch (e) {
+                  friendAvatar = null;
+                }
+              }
+            }
+          } catch (e) {}
+
+          // Format time
+          let time = '';
+          if (updatedAt && updatedAt.toDate) {
+            const date = updatedAt.toDate();
+            time = date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+          }
+
+          socialsArr.push({
+            id: chatDoc.id,
+            senderName: friendName,
+            senderAvatar: friendAvatar,
+            message: lastMessage,
+            time,
+            category: (unreadCount > 0 ? 'new' : 'earlier') as 'new' | 'earlier',
+            friendId,
+          });
+        }
+        setSocials(socialsArr);
+      } catch (e) {
+        setSocials([]);
+      }
+      setLoading(false);
+    };
+    fetchSocials();
+  }, []);
+
+  // Fetch challenge invitations from notifications
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user) {
+      setInvitations([]);
+      setLoadingInvitations(false);
+      return;
+    }
+    setLoadingInvitations(true);
+    const notificationsRef = collection(db, 'users', user.uid, 'notifications');
+    const q = query(notificationsRef, where('type', '==', 'challenge_invitation'));
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const invites: any[] = [];
+      for (const docSnapshot of snapshot.docs) {
+        const data = docSnapshot.data();
+        // Get sender's avatar
+        let senderAvatar = undefined;
+        try {
+          const senderDoc = await getDoc(doc(db, 'users', data.senderId));
+          const senderData = senderDoc.data();
+          if (senderData && senderData.avatar) {
+            const avatarRef = ref(storage, senderData.avatar);
+            senderAvatar = await getDownloadURL(avatarRef);
+          }
+        } catch {}
+        invites.push({
+          id: docSnapshot.id,
+          senderName: data.senderName,
+          senderAvatar,
+          challengeName: data.challengeName,
+          challengeDays: data.challengeDays,
+          challengeMins: data.challengeMins,
+          challengeId: data.challengeId,
+          senderId: data.senderId,
+          createdAt: data.createdAt,
+          read: data.read,
+        });
+      }
+      setInvitations(invites);
+      setLoadingInvitations(false);
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Separate the messages into 'New' and 'Earlier'
   const newMessages = socials.filter(social => social.category === 'new');
   const earlierMessages = socials.filter(social => social.category === 'earlier');
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#EFF2FF' }}>
+        <ActivityIndicator size="large" color="#6549FE" />
+      </View>
+    );
+  }
+
+  // Invitation card renderer
+  function renderInvitation(invite: any) {
+    const isUnread = invite.read === false;
+    const unreadStyle = { color: '#000', fontWeight: 'bold' as 'bold' };
+    return (
+      <TouchableOpacity
+        key={invite.id}
+        style={styles.socialCard}
+        onPress={() => {
+          router.push({
+            pathname: '/Challenges/ChallengeInvitation',
+            params: {
+              notificationId: invite.id,
+              challengeId: invite.challengeId,
+              senderId: invite.senderId,
+            },
+          });
+        }}
+      >
+        <View style={styles.profileContainer}>
+          {invite.senderAvatar ? (
+            <Image source={{ uri: invite.senderAvatar }} style={styles.profilePic} />
+          ) : (
+            <View style={styles.profilePic} />
+          )}
+          <View style={styles.textContainer}>
+            <Text style={[styles.senderName, isUnread && unreadStyle]}>{invite.senderName}</Text>
+            <Text style={[styles.messageText, isUnread && unreadStyle]}>
+              {`${invite.senderName} invited you to join "${invite.challengeName}" challenge for ${invite.challengeDays} days, ${invite.challengeMins} mins per day`}
+              {"\n"}Tap here to view!
+            </Text>
+            <Text style={[styles.messageTime, isUnread && unreadStyle]}>
+              {invite.createdAt && invite.createdAt.toDate ?
+                invite.createdAt.toDate().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+            </Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -32,46 +275,26 @@ export default function SocialsScreen() {
 
       {/* Content */}
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Invitations Section */}
+        <View style={styles.socialsSection}>
+          <Text style={styles.sectionTitle}>Invitations</Text>
+          {loadingInvitations ? (
+            <ActivityIndicator size="small" color="#6549FE" />
+          ) : invitations.length === 0 ? (
+            <Text style={{ color: '#AAA', marginBottom: 10 }}>No invitations</Text>
+          ) : (
+            invitations.map(renderInvitation)
+          )}
+        </View>
         {/* New Messages Section */}
         <View style={styles.socialsSection}>
           <Text style={styles.sectionTitle}>New</Text>
-          {newMessages.map(social => (
-            <View key={social.id} style={styles.socialCard}>
-              <View style={styles.profileContainer}>
-                {/* Empty Profile Picture */}
-                <View style={styles.profilePic} />
-                <View style={styles.textContainer}>
-                  <Text style={styles.senderName}>{social.senderName}</Text>
-                  <Text style={styles.messageText}>
-                    {social.senderName} just sent you a message: "{social.message}" 
-                    {"\n"}Tap here to reply!
-                  </Text>
-                  <Text style={styles.messageTime}>{social.time}</Text>
-                </View>
-              </View>
-            </View>
-          ))}
+          {newMessages.map(social => renderNotification(social, router))}
         </View>
-
         {/* Earlier Messages Section */}
         <View style={styles.socialsSection}>
           <Text style={styles.sectionTitle}>Earlier</Text>
-          {earlierMessages.map(social => (
-            <View key={social.id} style={styles.socialCard}>
-              <View style={styles.profileContainer}>
-                {/* Empty Profile Picture */}
-                <View style={styles.profilePic} />
-                <View style={styles.textContainer}>
-                  <Text style={styles.senderName}>{social.senderName}</Text>
-                  <Text style={styles.messageText}>
-                    {social.senderName} just sent you a message: "{social.message}" 
-                    {"\n"}Tap here to reply!
-                  </Text>
-                  <Text style={styles.messageTime}>{social.time}</Text>
-                </View>
-              </View>
-            </View>
-          ))}
+          {earlierMessages.map(social => renderNotification(social, router))}
         </View>
       </ScrollView>
     </View>

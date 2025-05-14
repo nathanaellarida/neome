@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
+import { auth, db } from '../../firebaseConfig';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
 export default function UserDataScreen3() {
   const { width, height } = Dimensions.get('window');
@@ -15,39 +18,59 @@ export default function UserDataScreen3() {
   const [heightUnit, setHeightUnit] = useState('cm');
   const [weightUnit, setWeightUnit] = useState('kg');
 
+  useEffect(() => {
+    if (!auth.currentUser) {
+      router.replace({ pathname: '/loginpage/login', params: { redirectTo: '/neome_userdata_app/heightandweight' } });
+    }
+  }, []);
+
+  const handleNext = async () => {
+    if (!auth.currentUser) {
+      alert('You must be logged in to continue');
+      return;
+    }
+    try {
+      const userRef = doc(db, 'users', auth.currentUser.uid);
+      await updateDoc(userRef, {
+        height: heightValue,
+        weight: weightValue,
+        updatedAt: serverTimestamp(),
+      });
+      router.push('/neome_userdata_app/bodytype');
+    } catch (error) {
+      console.error('Error updating height and weight:', error);
+      alert('Failed to save your height and weight. Please try again.');
+    }
+  };
+
   return (
     <View style={styles.container}>
-      {/* 🔙 Back Button */}
-      <TouchableOpacity
-              style={[styles.backButton, { top: 65 * scaleHeight, left: 40 * scaleWidth }]}
-              onPress={() => router.back()} // ✅ Goes to the previous screen
-            >
-              <Text style={[styles.backButtonText, { fontSize: 100 * scaleWidth, top: -20 * scaleHeight }]}>←</Text>
-            </TouchableOpacity>
+      {/* Back Button */}
+      <TouchableOpacity 
+        style={styles.backButton} 
+        onPress={() => router.back()}
+      >
+        <Ionicons name="arrow-back" size={24} color="#6549FE" />
+      </TouchableOpacity>
 
-      {/* Progress Bar */}
-      <View style={[styles.progressBarContainer, { top: 90 * scaleHeight, right: 60 * scaleWidth }]}>
-              <Text style={[styles.progressText, { fontSize: 40 * scaleWidth }]}>2/8</Text>
-            </View>
-
-      {/* Progress Bar Status */}
-      <View style={[styles.progressStatus, { top: 105 * scaleHeight }]}></View>
-
-      {/* Progress Bar Status Colored */}
-      <View style={[styles.progressStatusColored, { top: 72 * scaleHeight, left: -210 * scaleWidth }]}></View>
+      {/* Progress Container */}
+      <View style={styles.progressContainer}>
+        <View style={styles.progressBarBackground}>
+          <View style={styles.progressBarFill} />
+        </View>
+        <Text style={styles.progressText}>4/9</Text>
+      </View>
 
       {/* Title */}
-      <Text style={[styles.title, { top: 244 * scaleHeight, fontSize: 75 * scaleWidth }]}>
-        Height and Weight
-      </Text>
+      <Text style={styles.title}>Height and Weight</Text>
 
       {/* Subtitle */}
-      <Text style={[styles.subtitle, { top: 362 * scaleHeight, fontSize: 50 * scaleWidth }]}>
+      <Text style={styles.subtitle}>
         This helps us create your personalized plan
       </Text>
 
       {/* Height Section */}
-      <View style={[styles.selectionContainer, { marginTop: 170 }]}>
+      <View style={[styles.selectionContainer, { marginTop: 32 }]}>
         <Text style={styles.label}>Height</Text>
         <View style={styles.unitSwitch}>
           <TouchableOpacity
@@ -57,10 +80,10 @@ export default function UserDataScreen3() {
             <Text style={[styles.unitText, heightUnit === 'cm' && styles.unitTextSelected]}>Cm</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.unitButton, heightUnit === 'in' && styles.unitButtonSelected]}
-            onPress={() => setHeightUnit('in')}
+            style={[styles.unitButton, heightUnit === 'Ft' && styles.unitButtonSelected]}
+            onPress={() => setHeightUnit('Ft')}
           >
-            <Text style={[styles.unitText, heightUnit === 'in' && styles.unitTextSelected]}>In</Text>
+            <Text style={[styles.unitText, heightUnit === 'Ft' && styles.unitTextSelected]}>Ft</Text>
           </TouchableOpacity>
         </View>
         <Text style={styles.sliderValue}>{heightValue}</Text>
@@ -78,7 +101,7 @@ export default function UserDataScreen3() {
       </View>
 
       {/* Weight Section */}
-      <View style={[styles.selectionContainer, { marginTop: 10 }]}>
+      <View style={[styles.selectionContainer, { marginTop: 32 }]}>
         <Text style={styles.label}>Weight</Text>
         <View style={styles.unitSwitch}>
           <TouchableOpacity
@@ -110,10 +133,10 @@ export default function UserDataScreen3() {
 
       {/* Next Button */}
       <TouchableOpacity
-        style={[styles.nextButton, { left: 162 * scaleWidth, top: 1681 * scaleHeight, width: 757 * scaleWidth, height: 135 * scaleHeight }]}
-        onPress={() => router.push('/neome_userdata_app/bodytype')}
+        style={styles.nextButton}
+        onPress={handleNext}
       >
-        <Text style={[styles.nextButtonText, { fontSize: 48 * scaleWidth }]}>Next</Text>
+        <Text style={styles.nextButtonText}>Next</Text>
       </TouchableOpacity>
     </View>
   );
@@ -123,43 +146,59 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    alignItems: 'center',
+    padding: 20,
   },
-  progressBarContainer: {
+  backButton: {
     position: 'absolute',
+    top: 40,
+    left: 20,
+    zIndex: 1,
+    padding: 10,
   },
-  progressStatusColored: {
-    width: 100,
-    height: 12,
-    backgroundColor: '#6549FE',
-    borderRadius: 80,
+  progressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginTop: 40,
+    marginRight: 20,
+    gap: 10,
   },
-  progressText: {
-    fontWeight: '600',
-    color: '#6549FE',
-  },
-  progressStatus: {
+  progressBarBackground: {
     width: 240,
     height: 12,
     backgroundColor: '#F3F6FF',
     borderRadius: 80,
+    overflow: 'hidden',
   },
-  title: {
-    position: 'absolute',
+  progressBarFill: {
+    width: '44.44%',
+    height: '100%',
+    backgroundColor: '#6549FE',
+    borderRadius: 80,
+  },
+  progressText: {
+    fontSize: 16,
     fontWeight: '600',
     color: '#6549FE',
-    width: '100%',
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '600',
+    color: '#6549FE',
     textAlign: 'center',
+    marginTop: 50,
   },
   subtitle: {
-    position: 'absolute',
+    fontSize: 16,
     color: '#AEAEAE',
-    width: '100%',
     textAlign: 'center',
+    marginTop: 8,
+    paddingHorizontal: 40,
   },
   selectionContainer: {
-    marginTop: 150,
+    width: '100%',
     alignItems: 'center',
+    paddingHorizontal: 20,
   },
   label: {
     fontSize: 20,
@@ -200,27 +239,19 @@ const styles = StyleSheet.create({
     height: 40,
   },
   nextButton: {
-    position: 'absolute',
     backgroundColor: '#6549FE',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 67,
+    paddingVertical: 18,
+    borderRadius: 30,
+    marginHorizontal: 20,
+    position: 'absolute',
+    bottom: 32,
+    left: 20,
+    right: 20,
   },
   nextButtonText: {
-    fontWeight: '600',
     color: '#FFFFFF',
-  },
-  backButton: {
-    position: 'absolute',
-    backgroundColor: '#F3F6FF',
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 100,
-  },
-  backButtonText: {
-    fontWeight: 'bold',
-    color: '#6549FE',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });

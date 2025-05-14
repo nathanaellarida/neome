@@ -10,6 +10,9 @@ import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'react-native';
 //import uuid from 'react-native-uuid';
 import { router } from 'expo-router';
+import { db, auth } from '../../firebaseConfig';
+import { collection, doc, setDoc, addDoc, updateDoc, deleteDoc, getDocs, onSnapshot, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 
 type Comment = {
   id: string;
@@ -179,6 +182,38 @@ const closeCommentModal = () => {
   const textInputRef = useRef<TextInput>(null);
   const scrollViewRef = useRef<ScrollView>(null);
 
+  const [userId, setUserId] = useState<string | null>(null);
+
+  // Load userId on mount
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) setUserId(user.uid);
+      else setUserId(null);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Load folders and notebooks from Firestore
+  useEffect(() => {
+    if (!userId) return;
+    // Folders
+    const foldersRef = collection(db, 'users', userId, 'Folders');
+    const unsubFolders = onSnapshot(foldersRef, (snapshot) => {
+      const folders = snapshot.docs.map(doc => ({ ...(doc.data() as Folder), id: doc.id }));
+      updateState({ folders });
+    });
+    // Notebooks
+    const journalsRef = collection(db, 'users', userId, 'Journals');
+    const unsubJournals = onSnapshot(journalsRef, (snapshot) => {
+      const notebooks = snapshot.docs.map(doc => ({ ...(doc.data() as Notebook), id: doc.id }));
+      updateState({ notebooks });
+    });
+    return () => {
+      unsubFolders();
+      unsubJournals();
+    };
+  }, [userId]);
+
   useEffect(() => {
     if (triggerAnalyze) {
       // Set triggerAnalyze back to false after a short delay to reset
@@ -290,7 +325,7 @@ const closeCommentModal = () => {
   };
   
   // Create a new notebook
-  const createNotebook = () => {
+  const createNotebook = async () => {
     if (uiState.newNotebookTitle.trim() === '') {
       Toast.show({
         type: 'error',
@@ -298,10 +333,10 @@ const closeCommentModal = () => {
         position: 'top',
         visibilityTime: 2000,
       });
-      setJournalImage(null); // ✅ clears image when switching or creating
+      setJournalImage(null);
       return;
-
     }
+    if (!userId) return;
   
     const randomColor = PASTEL_COLORS[Math.floor(Math.random() * PASTEL_COLORS.length)];
   
@@ -340,16 +375,19 @@ const closeCommentModal = () => {
       newNotebookTitle: '',
       notebookModalVisible: false,
     });
+
+    await addDoc(collection(db, 'users', userId, 'Journals'), newNotebook);
   };
   
   
   
   // Create a new folder
-  const createFolder = () => {
+  const createFolder = async () => {
     if (uiState.newFolderName.trim() === '') {
       Alert.alert('Error', 'Please enter a folder name');
       return;
     }
+    if (!userId) return;
     
     const newFolder: Folder = {
       id: Date.now().toString(),
@@ -357,6 +395,8 @@ const closeCommentModal = () => {
       notebooks: [],
       isExpanded: true,
     };
+    
+    await addDoc(collection(db, 'users', userId, 'Folders'), newFolder);
     
     updateState({
       folders: [...state.folders, newFolder],
@@ -386,37 +426,16 @@ const closeCommentModal = () => {
 // On Save Button
 const saveJournalEntry = async () => {
   try {
-    if (!isJournalEdited) {
-      return;
-    }
-
-    if (!state.selectedNotebook) {
-      return;
-    }
-
-    const updatedNotebooks = state.notebooks.map((notebook) => {
-      if (notebook.id === state.selectedNotebook?.id) {
-        const updatedPages = notebook.pages.length > 0
-          ? [{ ...notebook.pages[0], content: state.journalText }]
-          : [{ id: Date.now().toString(), content: state.journalText, mood: '', date: new Date() }];
-
-        return { ...notebook, pages: updatedPages, lastEdited: new Date() };
-      }
-      return notebook;
+    if (!isJournalEdited || !state.selectedNotebook || !userId) return;
+    const notebookRef = doc(db, 'users', userId, 'Journals', state.selectedNotebook.id);
+    const updatedPages = state.selectedNotebook.pages.length > 0
+      ? [{ ...state.selectedNotebook.pages[0], content: state.journalText }]
+      : [{ id: Date.now().toString(), content: state.journalText, mood: '', date: new Date() }];
+    await updateDoc(notebookRef, {
+      pages: updatedPages,
+      lastEdited: new Date(),
     });
-
-    updateState({
-      notebooks: updatedNotebooks,
-    });
-
-    // ✅ Toast appears at the top
-    Toast.show({
-      type: 'success',
-      text1: 'Journal Saved Successfully!',
-      position: 'top',
-      visibilityTime: 2000,
-    });
-
+    Toast.show({ type: 'success', text1: 'Journal Saved Successfully!', position: 'top', visibilityTime: 2000 });
     setIsJournalEdited(false);
   } catch (error) {
     console.error('Error saving journal entry:', error);
@@ -483,6 +502,7 @@ const analyzeJournal = async () => {
 
   // Delete a notebook
   const deleteNotebook = (notebookId: string) => {
+    if (!userId) return;
     Alert.alert(
       'Delete Notebook',
       'Are you sure you want to delete this notebook?',
@@ -491,30 +511,16 @@ const analyzeJournal = async () => {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => {
-            const notebookToDelete = state.notebooks.find(n => n.id === notebookId);
-            if (notebookToDelete?.folderId) {
-              updateState({
-                folders: state.folders.map(folder => 
-                  folder.id === notebookToDelete.folderId
-                    ? { ...folder, notebooks: folder.notebooks.filter(id => id !== notebookId) }
-                    : folder
-                ),
-              });
+          onPress: async () => {
+            // Remove from folder's notebooks array if needed
+            const notebook = state.notebooks.find(n => n.id === notebookId);
+            if (notebook?.folderId) {
+              const folderRef = doc(db, 'users', userId, 'folders', notebook.folderId);
+              await updateDoc(folderRef, { notebooks: arrayRemove(notebookId) });
             }
-  
-            updateState({
-              notebooks: state.notebooks.filter(n => n.id !== notebookId),
-              selectedNotebook: state.selectedNotebook?.id === notebookId ? null : state.selectedNotebook,
-            });
-
-            Toast.show({
-              type: 'success',
-              text1: 'Notebook deleted!',
-              position: 'top',
-              visibilityTime: 2000,
-            });
-            
+            await deleteDoc(doc(db, 'users', userId, 'journals', notebookId));
+            updateState({ selectedNotebook: state.selectedNotebook?.id === notebookId ? null : state.selectedNotebook });
+            Toast.show({ type: 'success', text1: 'Notebook deleted!', position: 'top', visibilityTime: 2000 });
           },
         },
       ]
@@ -524,6 +530,7 @@ const analyzeJournal = async () => {
 
   // Delete a folder
   const deleteFolder = (folderId: string) => {
+    if (!userId) return;
     Alert.alert(
       'Delete Folder',
       'Are you sure you want to delete this folder? Notebooks will be moved to unassigned.',
@@ -532,16 +539,18 @@ const analyzeJournal = async () => {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
             // Move all notebooks in this folder to unassigned
-            updateState({
-              notebooks: state.notebooks.map(notebook => 
-                notebook.folderId === folderId
-                  ? { ...notebook, folderId: null }
-                  : notebook
-              ),
-              folders: state.folders.filter(f => f.id !== folderId),
+            const journalsRef = collection(db, 'users', userId, 'Journals');
+            const querySnapshot = await getDocs(journalsRef);
+            const batch: Promise<any>[] = [];
+            querySnapshot.forEach((docSnap) => {
+              if (docSnap.data().folderId === folderId) {
+                batch.push(updateDoc(doc(db, 'users', userId, 'Journals', docSnap.id), { folderId: null }));
+              }
             });
+            await Promise.all(batch);
+            await deleteDoc(doc(db, 'users', userId, 'Folders', folderId));
             updateUiState({ editFolderModalVisible: false });
           },
         },
@@ -550,82 +559,43 @@ const analyzeJournal = async () => {
   };
 
   //Save edit notebook
-  const saveEditedNotebook = () => {
-    if (!state.editingNotebook || uiState.editNotebookTitle.trim() === '') {
+  const saveEditedNotebook = async () => {
+    if (!state.editingNotebook || uiState.editNotebookTitle.trim() === '' || !userId) {
       Alert.alert('Error', 'Please enter a notebook title');
       return;
     }
-  
-    const updatedNotebook = {
-      ...state.editingNotebook,
-      title: uiState.editNotebookTitle, // get new title
-      // folderId is already updated in editingNotebook when selecting folders
-    };
-  
-    const previousFolderId = state.notebooks.find(n => n.id === updatedNotebook.id)?.folderId;
-    const newFolderId = updatedNotebook.folderId;
-  
-    // ✅ Update notebook list
-    const updatedNotebooks = state.notebooks.map(n =>
-      n.id === updatedNotebook.id ? updatedNotebook : n
-    );
-  
-    // ✅ Update folders if folder changed
-    let updatedFolders = [...state.folders];
-  
-    if (previousFolderId !== newFolderId) {
-      // Remove from previous folder
-      if (previousFolderId) {
-        updatedFolders = updatedFolders.map(folder =>
-          folder.id === previousFolderId
-            ? { ...folder, notebooks: folder.notebooks.filter(id => id !== updatedNotebook.id) }
-            : folder
-        );
-      }
-  
-      // Add to new folder
-      if (newFolderId) {
-        updatedFolders = updatedFolders.map(folder =>
-          folder.id === newFolderId
-            ? { ...folder, notebooks: [...folder.notebooks, updatedNotebook.id] }
-            : folder
-        );
-      }
+    const notebookRef = doc(db, 'users', userId, 'journals', state.editingNotebook.id);
+    // Detect folder change
+    const prevNotebook = state.notebooks.find(n => n.id === state.editingNotebook?.id);
+    const prevFolderId = prevNotebook?.folderId;
+    const newFolderId = state.editingNotebook.folderId;
+    if (prevFolderId && prevFolderId !== newFolderId) {
+      const prevFolderRef = doc(db, 'users', userId, 'folders', prevFolderId);
+      await updateDoc(prevFolderRef, { notebooks: arrayRemove(state.editingNotebook.id) });
     }
-  
-    updateState({
-      notebooks: updatedNotebooks,
-      folders: updatedFolders,
-      editingNotebook: null,
+    if (newFolderId && prevFolderId !== newFolderId) {
+      const newFolderRef = doc(db, 'users', userId, 'folders', newFolderId);
+      await updateDoc(newFolderRef, { notebooks: arrayUnion(state.editingNotebook.id) });
+    }
+    await updateDoc(notebookRef, {
+      title: uiState.editNotebookTitle,
+      folderId: state.editingNotebook.folderId,
     });
-  
-    updateUiState({
-      editNotebookTitle: '',
-      notebookModalVisible: false, // ✅ closes modal
-    });
+    updateUiState({ editNotebookTitle: '', notebookModalVisible: false });
+    updateState({ editingNotebook: null });
   };
   
 
   // Save edited folder
-  const saveEditedFolder = () => {
-    if (!state.editingFolder || uiState.editFolderName.trim() === '') {
+  const saveEditedFolder = async () => {
+    if (!state.editingFolder || uiState.editFolderName.trim() === '' || !userId) {
       Alert.alert('Error', 'Please enter a folder name');
       return;
     }
-
-    updateState({
-      folders: state.folders.map(folder => 
-        folder.id === state.editingFolder?.id
-          ? { ...folder, name: uiState.editFolderName }
-          : folder
-      ),
-      editingFolder: null,
-    });
-
-    updateUiState({
-      editFolderName: '',
-      editFolderModalVisible: false,
-    });
+    const folderRef = doc(db, 'users', userId, 'Folders', state.editingFolder.id);
+    await updateDoc(folderRef, { name: uiState.editFolderName });
+    updateUiState({ editFolderName: '', editFolderModalVisible: false });
+    updateState({ editingFolder: null });
   };
 
   // Notebook Item Component
@@ -2035,14 +2005,6 @@ const styles = StyleSheet.create({
   activeToolbarButton: {
     backgroundColor: '#f0ebff',
     borderRadius: 5,
-  },
-  colorIndicator: {
-    position: 'absolute',
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    top: 0,
-    right: 0,
   },
   editorScrollView: {
     flex: 1,

@@ -1,25 +1,82 @@
 import { useRouter } from 'expo-router';
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
+import { Audio } from 'expo-av';
+import { db, auth } from '../../firebaseConfig';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
+import type { User } from 'firebase/auth';
 
 export default function App() {
   const webViewRef = useRef<WebView>(null);
   const router = useRouter(); // Initialize router
+  const soundRef = useRef<Audio.Sound | null>(null);
+  const [currentUser, setCurrentUser] = React.useState<User | null>(null);
 
-  const handleWebViewMessage = (event: WebViewMessageEvent) => {
+  useEffect(() => {
+    const loadSound = async () => {
+      const { sound } = await Audio.Sound.createAsync(
+        require('../assets/images/tap.wav'),
+        { shouldPlay: false }
+      );
+      soundRef.current = sound;
+    };
+
+    loadSound();
+
+    const unsubscribe = onAuthStateChanged(auth, (user: User | null) => {
+      setCurrentUser(user);
+    });
+
+    return () => {
+      if (soundRef.current) {
+        soundRef.current.unloadAsync();
+      }
+      unsubscribe();
+    };
+  }, []);
+
+  const playTapSound = async () => {
     try {
-      const data = JSON.parse(event.nativeEvent.data);
-
+      const sound = soundRef.current;
+      if (sound) {
+        await sound.stopAsync(); // Ensure sound starts clean
+        await sound.playFromPositionAsync(0); // No delay, plays from start
+      }
+    } catch (error) {
+      console.warn('Failed to play sound', error);
+    }
+  };
+  
+  const handleWebViewMessage = async (event: WebViewMessageEvent) => {
+    const messageData = event.nativeEvent.data;
+    try {
+      const data = JSON.parse(messageData);
       if (data.action === 'goBackToPreviousScreen') {
-        router.back(); // Navigate back using expo-router
+        await playTapSound();
+        router.back();
+      } else if (data.action === 'saveConversation' && currentUser) {
+        if (Array.isArray(data.messages)) {
+          data.messages.forEach((msg: any) => {
+            if (msg.isUser) {
+              console.log('User message:', msg.text);
+            }
+          });
+        }
+        await addDoc(collection(db, 'chatbot'), {
+          user: currentUser.uid,
+          messages: data.messages,
+          createdAt: serverTimestamp(),
+        });
+        console.log('Conversation saved to Firestore!');
       } else {
         console.log('Bot replied:', data);
       }
     } catch (error) {
-      console.warn('Invalid message from WebView:', event.nativeEvent.data);
+      console.warn('Invalid message from WebView:', messageData);
     }
-  };
+  };  
  
   return (
     <View style={styles.container}>

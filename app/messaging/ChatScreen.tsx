@@ -109,6 +109,7 @@ const TypingIndicator = () => {
 const ChatScreen: React.FC = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const longPressSoundRef = useRef<Audio.Sound | null>(null);
 
   const passedChatId = typeof params.chatId === 'string' ? params.chatId : '';
   const receiverId = typeof params.receiverId === 'string' ? params.receiverId : '';
@@ -151,6 +152,24 @@ const ChatScreen: React.FC = () => {
   const [stickerModalVisible, setStickerModalVisible] = useState(false);
 
   const prevMessageCountRef = useRef<number>(0);
+
+  useEffect(() => {
+    const loadLongPressSound = async () => {
+      const { sound } = await Audio.Sound.createAsync(
+        require('../assets/images/tap.wav'), // your long-press sound file
+        { shouldPlay: false }
+      );
+      longPressSoundRef.current = sound;
+    };
+  
+    loadLongPressSound();
+  
+    return () => {
+      if (longPressSoundRef.current) {
+        longPressSoundRef.current.unloadAsync();
+      }
+    };
+  }, []);
 
   // Listen for authentication changes
   useEffect(() => {

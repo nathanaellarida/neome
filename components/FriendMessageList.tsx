@@ -94,6 +94,39 @@ interface ChatListProps {
   searchQuery?: string;
 }
 
+// Helper to format the timestamp as requested
+function formatChatTimestamp(date: Date) {
+  const now = new Date();
+  const isToday =
+    date.getDate() === now.getDate() &&
+    date.getMonth() === now.getMonth() &&
+    date.getFullYear() === now.getFullYear();
+
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const isYesterday =
+    date.getDate() === yesterday.getDate() &&
+    date.getMonth() === yesterday.getMonth() &&
+    date.getFullYear() === yesterday.getFullYear();
+
+  if (isToday) {
+    // Format as 1:43 am/pm
+    let hours = date.getHours();
+    const minutes = date.getMinutes();
+    const ampm = hours >= 12 ? 'pm' : 'am';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // the hour '0' should be '12'
+    const minutesStr = minutes < 10 ? '0' + minutes : minutes;
+    return `${hours}:${minutesStr} ${ampm}`;
+  } else if (isYesterday) {
+    // Format as day of week
+    return date.toLocaleDateString(undefined, { weekday: 'short' });
+  } else {
+    // Format as M/D/YY
+    return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear().toString().slice(-2)}`;
+  }
+}
+
 const FriendMessageList: React.FC<ChatListProps> = ({ onChatPress, searchQuery }) => {
   const [chatData, setChatData] = useState<ChatItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -434,50 +467,63 @@ const FriendMessageList: React.FC<ChatListProps> = ({ onChatPress, searchQuery }
         chat.name.toLowerCase().includes(searchQuery.toLowerCase()))
     : chatData;
 
+  const MAX_MESSAGE_LENGTH = 20; // Conservative to ensure time is visible
+
   const renderItem = ({ item }: { item: ChatItem }) => {
     return (
       <TouchableOpacity 
         style={styles.chatItem}
         onPress={() => onChatPress && onChatPress(item)}
       >
-        <View style={styles.avatarContainer}>
-          {item.avatarUrl ? (
-            <Image source={{ uri: item.avatarUrl }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatar, { backgroundColor: '#ccc' }]} />
-          )}
-          {item.online ? (
-            <View style={styles.onlineIndicator} />
-          ) : (
-            <View style={styles.offlineIndicator} />
-          )}
-        </View>
+        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+          <View style={styles.avatarContainer}>
+            {item.avatarUrl ? (
+              <Image source={{ uri: item.avatarUrl }} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatar, { backgroundColor: '#ccc' }]} />
+            )}
+            {item.online ? (
+              <View style={styles.onlineIndicator} />
+            ) : (
+              <View style={styles.offlineIndicator} />
+            )}
+          </View>
 
-        <View style={styles.messageContainer}>
-          <View style={styles.nameTimeRow}>
+          <View style={styles.messageContainer}>
             <Text style={[styles.name, item.unread > 0 && styles.unreadName]}>
               {item.name}
             </Text>
-            <Text style={styles.time}>{item.time}</Text>
+
+            <View style={styles.messageMetaRow}>
+              {item.isTyping ? (
+                <TypingIndicator />
+              ) : (
+                (() => {
+                  const truncatedMessage =
+                    item.lastMessage.length > MAX_MESSAGE_LENGTH
+                      ? item.lastMessage.slice(0, MAX_MESSAGE_LENGTH - 1) + '…'
+                      : item.lastMessage;
+                  return (
+                    <Text
+                      style={[styles.message, item.unread > 0 && styles.unreadMessage]}
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                    >
+                      {truncatedMessage}
+                      <Text style={styles.dotSeparator}> • </Text>
+                      <Text style={styles.time}>{formatChatTimestamp(item.timestamp)}</Text>
+                    </Text>
+                  );
+                })()
+              )}
+            </View>
           </View>
-          
-          <View style={styles.messageRow}>
-            {item.isTyping ? (
-              <TypingIndicator />
-            ) : (
-              <Text 
-                style={[styles.message, item.unread > 0 && styles.unreadMessage]} 
-                numberOfLines={1}
-              >
-                {item.lastMessage}
-              </Text>
-            )}
-            {item.unread > 0 && (
-              <View style={styles.unreadBadge}>
-                <Text style={styles.unreadText}>{item.unread}</Text>
-              </View>
-            )}
-          </View>
+
+          {item.unread > 0 && (
+            <View style={styles.unreadBadgeContainer}>
+              <View style={styles.unreadBadge} />
+            </View>
+          )}
         </View>
       </TouchableOpacity>
     );
@@ -600,12 +646,12 @@ const styles = StyleSheet.create({
   },
   unreadBadge: {
     backgroundColor: '#6549FE',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginLeft: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 5,
   },
   unreadText: {
     color: '#FFFFFF',
@@ -631,7 +677,24 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: '#666666',
     marginRight: 4
-  }
+  },
+  messageMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  dotSeparator: {
+    fontSize: 14,
+    color: '#A0A0A0',
+    marginHorizontal: 4,
+    fontWeight: 'bold',
+  },
+  unreadBadgeContainer: {
+    flex: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'stretch',
+  },
 });
 
 export default FriendMessageList;

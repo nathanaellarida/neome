@@ -2,41 +2,24 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { auth } from '../../firebaseConfig';
 
 export default function ChangePasswordScreen() {
   const router = useRouter();
-  const [oldPassword, setOldPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showOldPassword, setShowOldPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [email, setEmail] = useState('');
 
-  const handleChangePassword = () => {
-    // Add your password validation logic here
-    if (!oldPassword || !newPassword || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields');
+  const handleSendResetEmail = async () => {
+    if (!email) {
+      Alert.alert('Error', 'Please enter your email address');
       return;
     }
-    
-    if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
-      return;
+    try {
+      await sendPasswordResetEmail(auth, email);
+      router.push('/settings/CheckYourMail');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to send reset email');
     }
-    
-    if (newPassword.length < 8) {
-      Alert.alert('Error', 'Password must be at least 8 characters');
-      return;
-    }
-    
-    // If validation passes, show success modal
-    setShowSuccessModal(true);
-  };
-
-  const handleCloseModal = () => {
-    setShowSuccessModal(false);
-    router.back(); // Navigate back after closing modal
   };
 
   return (
@@ -46,114 +29,35 @@ export default function ChangePasswordScreen() {
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back-outline" size={22} color="#6549FE" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Change Password</Text>
+        <Text style={styles.headerTitle}>Reset Password</Text>
         <Ionicons name="lock-closed" size={24} color="#6549FE" />
       </View>
 
-      {/* Password Fields */}
-      <View style={styles.card}>
-        {/* Old Password */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Old Password</Text>
-          <View style={styles.passwordInputWrapper}>
-            <TextInput
-              style={styles.input}
-              secureTextEntry={!showOldPassword}
-              value={oldPassword}
-              onChangeText={setOldPassword}
-              placeholder="Enter your current password"
-            />
-            <TouchableOpacity onPress={() => setShowOldPassword(!showOldPassword)}>
-              <Ionicons 
-                name={showOldPassword ? 'eye-off' : 'eye'} 
-                size={20} 
-                color="#6549FE" 
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
+      {/* Instruction Text */}
+      <Text style={styles.instructionText}>
+        Enter the email associated with your account and we'll send an email with instructions to reset your password.
+      </Text>
 
-        {/* New Password */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>New Password</Text>
-          <View style={styles.passwordInputWrapper}>
-            <TextInput
-              style={styles.input}
-              secureTextEntry={!showNewPassword}
-              value={newPassword}
-              onChangeText={setNewPassword}
-              placeholder="Enter your new password"
-            />
-            <TouchableOpacity onPress={() => setShowNewPassword(!showNewPassword)}>
-              <Ionicons 
-                name={showNewPassword ? 'eye-off' : 'eye'} 
-                size={20} 
-                color="#6549FE" 
-              />
-            </TouchableOpacity>
-          </View>
-          <Text style={styles.hintText}>Must be at least 8 characters</Text>
-        </View>
-
-        {/* Confirm Password */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Confirm New Password</Text>
-          <View style={styles.passwordInputWrapper}>
-            <TextInput
-              style={styles.input}
-              secureTextEntry={!showConfirmPassword}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              placeholder="Confirm your new password"
-            />
-            <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
-              <Ionicons 
-                name={showConfirmPassword ? 'eye-off' : 'eye'} 
-                size={20} 
-                color="#6549FE" 
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
+      {/* Email Field */}
+      <View style={styles.inputContainerNoCard}>
+        <Text style={styles.label}>Email address</Text>
+        <TextInput
+          style={styles.emailInput}
+          value={email}
+          onChangeText={setEmail}
+          placeholder="Enter your email address"
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
       </View>
 
-      {/* Change Password Button */}
+      {/* Send Instructions Button */}
       <TouchableOpacity 
-        style={styles.changePasswordButton}
-        onPress={handleChangePassword}
+        style={styles.sendInstructionsButton}
+        onPress={handleSendResetEmail}
       >
-        <Text style={styles.changePasswordText}>Change Password</Text>
+        <Text style={styles.sendInstructionsText}>Send Instructions</Text>
       </TouchableOpacity>
-
-      {/* Success Modal */}
-      <Modal
-        visible={showSuccessModal}
-        transparent={true}
-        animationType="fade"
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            {/* Large Checkmark Icon */}
-            <View style={styles.checkmarkCircle}>
-              <Ionicons name="checkmark" size={48} color="white" />
-            </View>
-            
-            <Text style={styles.successTitle}>Successfully Changed</Text>
-            <Text style={styles.successSubtitle}>Password!</Text>
-            
-            <Text style={styles.successText}>
-              Password changed. You can now use your new password to log in.
-            </Text>
-            
-            <TouchableOpacity 
-              style={styles.okButton}
-              onPress={handleCloseModal}
-            >
-              <Text style={styles.okButtonText}>Okay</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -183,41 +87,45 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#6549FE',
   },
-  card: {
-    backgroundColor: '#fff',
-    margin: 20,
-    borderRadius: 20,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+  instructionText: {
+    fontSize: 14,
+    color: '#444',
+    marginHorizontal: 30,
+    marginTop: 30,
+    marginBottom: 18,
+    textAlign: 'left',
   },
-  inputContainer: {
-    marginBottom: 20,
+  inputContainerNoCard: {
+    marginHorizontal: 30,
+    marginBottom: 10,
+  },
+  emailInput: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    paddingHorizontal: 15,
+    paddingVertical: 14,
+    fontSize: 16,
+    marginTop: 6,
+  },
+  sendInstructionsButton: {
+    backgroundColor: '#8B5CF6',
+    marginHorizontal: 30,
+    marginTop: 18,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  sendInstructionsText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
   label: {
     fontSize: 14,
     color: '#666',
     marginBottom: 8,
-  },
-  passwordInputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F4F4F4',
-    borderRadius: 10,
-    paddingHorizontal: 15,
-  },
-  input: {
-    flex: 1,
-    paddingVertical: 12,
-    fontSize: 16,
-  },
-  hintText: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 5,
-    marginLeft: 5,
   },
   changePasswordButton: {
     backgroundColor: '#6549FE',

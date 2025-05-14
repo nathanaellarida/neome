@@ -1,26 +1,64 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
-import { useCallback } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { getDownloadURL, ref as storageRef } from 'firebase/storage';
+import { db, auth, storage } from '../../firebaseConfig';
 
 export default function ProfileScreen() {
   const router = useRouter();
 
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [userData, setUserData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useFocusEffect(
     useCallback(() => {
-      const fetchImage = async () => {
-        const uri = await AsyncStorage.getItem('profileImage');
-        if (uri) setProfileImage(uri);
+      const fetchUserData = async () => {
+        setLoading(true);
+        try {
+          const user = auth.currentUser;
+          if (!user) {
+            setLoading(false);
+            return;
+          }
+          const docRef = doc(db, 'users', user.uid);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            setUserData(data);
+            // Fetch avatar download URL if avatar exists
+            if (data.avatar) {
+              try {
+                const avatarRef = storageRef(storage, data.avatar);
+                const avatarUrl = await getDownloadURL(avatarRef);
+                setProfileImage(avatarUrl);
+              } catch (error) {
+                setProfileImage(null);
+              }
+            } else {
+              setProfileImage(null);
+            }
+          }
+        } catch (e) {
+          // handle error
+        }
+        setLoading(false);
       };
-      fetchImage();
+      fetchUserData();
     }, [])
   );
 
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#6549FE" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -43,17 +81,17 @@ export default function ProfileScreen() {
                 ) : (
                 <View style={styles.avatarCircle} />
                 )}
-            <Text style={styles.name}>Ramsey</Text>
+            <Text style={styles.name}>{userData?.name || 'Name'}</Text>
 
             {/* Info Items */}
             {[
-                { label: 'Username', value: 'Ramsey' },
+                { label: 'Username', value: userData?.name },
                 { label: 'Profile Photo', value: '', icon: true },
-                { label: 'Height', value: '162 cm' },
-                { label: 'Weight', value: '51 kg' },
-                { label: 'Sex', value: 'Female' },
-                { label: 'Date of Birth', value: 'November 12, 2000' },
-                { label: 'Email', value: 'ramsey@gmail.com' },
+                { label: 'Height', value: userData?.height ? `${userData.height} cm` : '' },
+                { label: 'Weight', value: userData?.weight ? `${userData.weight} kg` : '' },
+                { label: 'Sex', value: userData?.gender },
+                { label: 'Date of Birth', value: userData?.birthdate ? new Date(userData.birthdate).toLocaleDateString() : '' },
+                { label: 'Email', value: userData?.email },
                 ].map((item, index) => (
                 <View key={index} style={styles.item}>
                     <Text style={styles.label}>{item.label}</Text>
