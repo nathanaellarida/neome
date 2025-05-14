@@ -50,6 +50,7 @@ const AnimatedWaveDrop = ({ progress = 0.5, size = 100, color = '#FFB347' }) => 
 
   const amplitude = 5;
   const centerY = size * (1 - progress) * 0.8 + size * 0.1;
+  
   const getWavePath = (phase: number) => {
     let d = '';
     const points = 50;
@@ -61,6 +62,7 @@ const AnimatedWaveDrop = ({ progress = 0.5, size = 100, color = '#FFB347' }) => 
     d += ` L${size},${size} L0,${size} Z`;
     return d;
   };
+  
   const getReverseWavePath = (phase: number) => {
     let d = '';
     const points = 50;
@@ -72,8 +74,10 @@ const AnimatedWaveDrop = ({ progress = 0.5, size = 100, color = '#FFB347' }) => 
     d += ` L${size},${size} L0,${size} Z`;
     return d;
   };
+  
   const [phase, setPhase] = React.useState(0);
   const [phase2, setPhase2] = React.useState(0);
+  
   React.useEffect(() => {
     const id = animatedValue.addListener(({ value }) => setPhase(value * 2 * Math.PI));
     const id2 = animatedValue2.addListener(({ value }) => setPhase2(value * 2 * Math.PI));
@@ -82,6 +86,7 @@ const AnimatedWaveDrop = ({ progress = 0.5, size = 100, color = '#FFB347' }) => 
       animatedValue2.removeListener(id2);
     };
   }, [animatedValue, animatedValue2]);
+  
   return (
     <Svg width={size} height={size} viewBox="0 0 100 100">
       <Defs>
@@ -122,8 +127,8 @@ const AnimatedWaveDrop = ({ progress = 0.5, size = 100, color = '#FFB347' }) => 
 
 export default function FoodTracking() {
   const [calories, setCalories] = useState(0);
-  const [goal, setGoal] = useState<number|null>(null); // null = loading
-  const [history, setHistory] = useState(initialHistory);
+  const [goal, setGoal] = useState<number | null>(null); // null = loading
+  const [history, setHistory] = useState<MealEntry[]>(initialHistory);
   const [loadingGoal, setLoadingGoal] = useState(true);
   const [macroGoals, setMacroGoals] = useState({ protein: 0, fats: 0, carbs: 0 });
   const [macroIntake, setMacroIntake] = useState({ protein: 0, fats: 0, carbs: 0 });
@@ -137,49 +142,84 @@ export default function FoodTracking() {
         const userDoc = await getDoc(doc(db, 'users', user.uid));
         if (!userDoc.exists()) throw new Error('User data not found');
         const data = userDoc.data();
-        const weight = data.weight;
-        const height = data.height;
-        const gender = data.gender;
+        
+        // Extract and validate user data with default values if missing
+        const weight = Number(data.weight) || 70; // Default weight in kg if undefined or invalid
+        const height = Number(data.height) || 170; // Default height in cm if undefined or invalid
+        const gender = data.gender || 'male'; // Default gender if undefined
         const birthdate = data.birthdate;
-        const activitylevel = data.activitylevel;
-        const wellnessgoals = data.wellnessgoals;
-        // Calculate age
-        const birth = new Date(birthdate);
-        const today = new Date();
-        let age = today.getFullYear() - birth.getFullYear();
-        const m = today.getMonth() - birth.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
-          age--;
+        const activitylevel = data.activitylevel || 'Moderate Active'; // Default activity level
+        const wellnessgoals = data.wellnessgoals || 'Maintain Weight'; // Default wellness goal
+        
+        // Calculate age safely
+        let age = 30; // Default age if birthdate is invalid
+        if (birthdate) {
+          try {
+            const birth = new Date(birthdate);
+            const today = new Date();
+            age = today.getFullYear() - birth.getFullYear();
+            const m = today.getMonth() - birth.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+              age--;
+            }
+          } catch (e) {
+            console.log('Error calculating age, using default:', e);
+          }
         }
-        // BMR
+        
+        // BMR calculation with validated inputs
         let BMR = 10 * weight + 6.25 * height - 5 * age;
         BMR += gender === 'male' ? 5 : -161;
+        
         // Activity multiplier
-        let multiplier = 1.2;
+        let multiplier = 1.2; // Default multiplier
         if (activitylevel === 'Sedentary') multiplier = 1.2;
         else if (activitylevel === 'Lightly Active') multiplier = 1.375;
         else if (activitylevel === 'Moderate Active') multiplier = 1.55;
         else if (activitylevel === 'Very Active') multiplier = 1.725;
         else if (activitylevel === 'Super Active') multiplier = 1.9;
+        
+        // Ensure BMR and multiplier are valid numbers
+        BMR = isNaN(BMR) ? 1500 : BMR; // Default BMR if calculation fails
+        multiplier = isNaN(multiplier) ? 1.2 : multiplier; // Ensure multiplier is valid
+        
         const TDEE = BMR * multiplier;
         let finalCalorie = TDEE;
+        
         if (wellnessgoals === 'Lose Weight') finalCalorie -= 300;
         else if (wellnessgoals === 'Gain Weight') finalCalorie += 300;
+        
+        // Ensure final calorie value is a valid number
+        finalCalorie = isNaN(finalCalorie) ? DEFAULT_GOAL : finalCalorie;
         const roundedGoal = Math.round(finalCalorie);
         setGoal(roundedGoal);
-
+        
         // Macronutrient ratios
         let proteinPct = 0.3, fatsPct = 0.3, carbsPct = 0.4;
+        
+        // Adjust ratios based on wellness goals
         if (wellnessgoals === 'Muscle Gain') {
           proteinPct = 0.35; fatsPct = 0.25; carbsPct = 0.4;
         } else if (wellnessgoals === 'Gain Weight') {
           proteinPct = 0.2; fatsPct = 0.3; carbsPct = 0.5;
         }
-        // Calculate grams: protein/fat = 4/9/4 kcal per gram
-        const protein = Math.round((roundedGoal * proteinPct) / 4);
-        const fats = Math.round((roundedGoal * fatsPct) / 9);
-        const carbs = Math.round((roundedGoal * carbsPct) / 4);
-        setMacroGoals({ protein, fats, carbs });
+        
+        // Calculate grams: protein/carbs = 4 kcal per gram, fats = 9 kcal per gram
+        // Use Math.max to ensure we don't get negative values
+        const protein = Math.round(Math.max(0, (roundedGoal * proteinPct) / 4));
+        const fats = Math.round(Math.max(0, (roundedGoal * fatsPct) / 9));
+        const carbs = Math.round(Math.max(0, (roundedGoal * carbsPct) / 4));
+        
+        // Validate macro values to ensure they're not NaN
+        const validProtein = isNaN(protein) ? 150 : protein; // Default values
+        const validFats = isNaN(fats) ? 60 : fats;
+        const validCarbs = isNaN(carbs) ? 200 : carbs;
+        
+        setMacroGoals({ 
+          protein: validProtein, 
+          fats: validFats, 
+          carbs: validCarbs 
+        });
       } catch (e) {
         setGoal(DEFAULT_GOAL); // fallback
         setMacroGoals({ protein: 150, fats: 60, carbs: 200 }); // fallback
@@ -237,37 +277,38 @@ export default function FoodTracking() {
     setCalories(history.reduce((sum, entry) => sum + entry.calories, 0));
   }, [history]);
 
-  // Use real macro intake values from today's logs
-  const protein = macroIntake.protein;
-  const fats = macroIntake.fats;
-  const carbs = macroIntake.carbs;
-  const proteinGoal = macroGoals.protein;
-  const fatsGoal = macroGoals.fats;
-  const carbsGoal = macroGoals.carbs;
-  const proteinPercent = proteinGoal ? Math.min(protein / proteinGoal, 1) : 0;
-  const fatsPercent = fatsGoal ? Math.min(fats / fatsGoal, 1) : 0;
-  const carbsPercent = carbsGoal ? Math.min(carbs / carbsGoal, 1) : 0;
+  // Use real macro intake values from today's logs with validation
+  const protein = Number(macroIntake.protein) || 0;
+  const fats = Number(macroIntake.fats) || 0;
+  const carbs = Number(macroIntake.carbs) || 0;
+  
+  // Ensure macro goals are valid numbers
+  const proteinGoal = Number(macroGoals.protein) || 150; // Default values if undefined
+  const fatsGoal = Number(macroGoals.fats) || 60;
+  const carbsGoal = Number(macroGoals.carbs) || 200;
+  
+  // Calculate percentages safely
+  const proteinPercent = proteinGoal > 0 ? Math.min(protein / proteinGoal, 1) : 0;
+  const fatsPercent = fatsGoal > 0 ? Math.min(fats / fatsGoal, 1) : 0;
+  const carbsPercent = carbsGoal > 0 ? Math.min(carbs / carbsGoal, 1) : 0;
 
-  const progress = goal ? Math.min(calories / goal, 1) : 0;
-  const circleCircumference = 2 * Math.PI * 83;
-  const strokeDashoffset = circleCircumference * (1 - progress);
-
-  // Dynamic color based on progress
-  let dynamicColor = '#FF4B4B'; // Red (danger)
-  if (progress >= 0.75) {
-    dynamicColor = '#4ADE80'; // Green (safe)
-  } else if (progress >= 0.5) {
-    dynamicColor = '#FFB347'; // Orange (medium)
-  }
-
-  // Calories remaining
-  const remaining = goal ? Math.max(goal - calories, 0) : 0;
+  // Calculate progress safely
+  const numGoal = Number(goal) || DEFAULT_GOAL; // Ensure goal is a number
+  const numCalories = Number(calories) || 0; // Ensure calories is a number
+  const progress = numGoal > 0 ? Math.min(numCalories / numGoal, 1) : 0;
+  
+  const dynamicColor = progress >= 0.75 ? '#4ADE80' : progress >= 0.5 ? '#FFB347' : '#FF4B4B';
+  
+  // Calculate remaining calories safely
+  const safeGoal = Number(goal) || DEFAULT_GOAL;
+  const safeCalories = Number(calories) || 0;
+  const remaining = Math.max(safeGoal - safeCalories, 0);
 
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.headerContainer}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={() => router.push('./HomeScreen')}>
           <Ionicons name="arrow-back-outline" size={24} color="#6549FE" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Food Tracking</Text>
@@ -309,10 +350,11 @@ export default function FoodTracking() {
             </View>
           </View>
           <View style={styles.calorieCol}>
-            <Text style={styles.calorieLabel}>{loadingGoal ? '...' : remaining + ' kcal'}</Text>
+            <Text style={styles.calorieLabel}>{loadingGoal ? '...' : `${remaining} kcal`}</Text>
             <Text style={styles.calorieSubLabel}>remaining</Text>
           </View>
         </View>
+        
         {/* Macros Row */}
         <View style={styles.macrosRow}>
           <View style={styles.macroCol}>
@@ -320,25 +362,32 @@ export default function FoodTracking() {
             <View style={styles.macroBarBg}>
               <View style={[styles.macroBar, { backgroundColor: '#E11D48', width: `${proteinPercent * 100}%` }]} />
             </View>
-            <Text style={styles.macroValue}>{protein.toFixed(1)} / {proteinGoal}g</Text>
+            <Text style={styles.macroValue}>
+              {!isNaN(protein) ? protein.toFixed(1) : '0.0'} / {!isNaN(proteinGoal) ? proteinGoal : '0'}g
+            </Text>
           </View>
           <View style={styles.macroCol}>
             <Text style={styles.macroLabel}>Fats</Text>
             <View style={styles.macroBarBg}>
               <View style={[styles.macroBar, { backgroundColor: '#F59E42', width: `${fatsPercent * 100}%` }]} />
             </View>
-            <Text style={styles.macroValue}>{fats.toFixed(1)} / {fatsGoal}g</Text>
+            <Text style={styles.macroValue}>
+              {!isNaN(fats) ? fats.toFixed(1) : '0.0'} / {!isNaN(fatsGoal) ? fatsGoal : '0'}g
+            </Text>
           </View>
           <View style={styles.macroCol}>
             <Text style={styles.macroLabel}>Carbs</Text>
             <View style={styles.macroBarBg}>
               <View style={[styles.macroBar, { backgroundColor: '#22D3EE', width: `${carbsPercent * 100}%` }]} />
             </View>
-            <Text style={styles.macroValue}>{carbs.toFixed(1)} / {carbsGoal}g</Text>
+            <Text style={styles.macroValue}>
+              {!isNaN(carbs) ? carbs.toFixed(1) : '0.0'} / {!isNaN(carbsGoal) ? carbsGoal : '0'}g
+            </Text>
           </View>
         </View>
+        
         <View style={styles.buttonRow}>
-          <TouchableOpacity style={styles.logMealButton} onPress={() => router.push('/homescreen/searchFood')}>
+          <TouchableOpacity style={styles.logMealButton} onPress={() => router.push('./searchFood')}>
             <Text style={styles.logMealButtonText}>Add a Meal</Text>
           </TouchableOpacity>
         </View>
@@ -370,10 +419,13 @@ export default function FoodTracking() {
           />
         )}
       </View>
-
-      <View style={{ position: 'absolute', bottom: 30, left: 0, right: 0, alignItems: 'center' }}>
-        <TouchableOpacity onPress={() => router.push('/homescreen/waterIntake')} style={{ backgroundColor: '#21A8F3', borderRadius: 22, paddingVertical: 12, paddingHorizontal: 32, elevation: 2 }}>
-          <Text style={{ color: '#fff', fontSize: 17, fontWeight: '600' }}>Track your Water Intake</Text>
+      
+      <View style={styles.waterTrackButtonContainer}>
+        <TouchableOpacity 
+          onPress={() => router.push('./waterIntake')} 
+          style={styles.waterTrackButton}
+        >
+          <Text style={styles.waterTrackButtonText}>Track your Water Intake</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -588,5 +640,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#888',
     marginTop: -4,
+  },
+  waterTrackButtonContainer: {
+    position: 'absolute',
+    bottom: 30,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  waterTrackButton: {
+    backgroundColor: '#21A8F3',
+    borderRadius: 22,
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    elevation: 2,
+  },
+  waterTrackButtonText: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '600',
   },
 });

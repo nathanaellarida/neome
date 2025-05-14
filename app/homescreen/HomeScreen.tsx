@@ -649,11 +649,10 @@ export default function HomeScreen() {
             <Text style={styles.trackFoodMain}>Track Food</Text>
             <Text style={styles.trackFoodGoal}>Goal: 2,000 Calories Today!</Text>
             <TouchableOpacity
-              style={styles.trackFoodButton}
-              onPress={async () => {
+              style={styles.trackFoodButton}              onPress={async () => {
                 await playTapSound();
                 // TODO: Replace with your food tracking screen route
-                router.push('/homescreen/foodTracking');
+                router.push('./foodTracking');
               }}
             >
               <Text style={styles.trackFoodButtonText}>Log Meal</Text>
@@ -669,10 +668,9 @@ export default function HomeScreen() {
             <Text style={styles.drinkWaterMain}>Drink a Water</Text>
             <Text style={styles.drinkWaterGoal}>Goal: 3 Liters Today! Tap to Track</Text>
             <TouchableOpacity
-              style={styles.drinkWaterButton}
-              onPress={async () => {
+              style={styles.drinkWaterButton}              onPress={async () => {
                 await playTapSound();
-                router.push('/homescreen/waterIntake');
+                router.push('./waterIntake');
               }}
             >
               <Text style={styles.drinkWaterButtonText}>Drink</Text>
@@ -688,10 +686,9 @@ export default function HomeScreen() {
             <Text style={styles.stepsCounterMain}>Steps Counter</Text>
             <Text style={styles.stepsCounterGoal}>Goal: 10,000 Steps Today!</Text>
             <TouchableOpacity
-              style={styles.stepsCounterButton}
-              onPress={async () => {
+              style={styles.stepsCounterButton}              onPress={async () => {
                 await playTapSound();
-                router.push('/homescreen/stepsCounterHome');
+                router.push('./stepsCounterHome');
               }}
             >
               <Text style={styles.stepsCounterButtonText}>Track Steps</Text>

@@ -323,7 +323,7 @@ export default function WaterIntake() {
             <Text style={styles.drinkButtonText}>Drink ({drinkAmount} mL)</Text>
           </TouchableOpacity>
           <View style={styles.cupButtonWrapper}>
-            <TouchableOpacity style={styles.cupButton} onPress={() => router.push('/homescreen/switchCupSizes')}>
+            <TouchableOpacity style={styles.cupButton} onPress={() => router.push('./switchCupSizes')}>
               <Image source={cup.image} style={{ width: 22, height: 22, resizeMode: 'contain' }} />
             </TouchableOpacity>
             <View style={styles.refreshIconWrapper}>
@@ -339,7 +339,7 @@ export default function WaterIntake() {
       <View style={styles.historyCard}>
         <View style={styles.historyHeader}>
           <Text style={styles.historyTitle}>History</Text>
-          <TouchableOpacity onPress={() => router.push('/homescreen/waterIntakeHistory')}>
+          <TouchableOpacity onPress={() => router.push('./waterIntakeHistory')}>
             <Text style={styles.viewAll}>View All</Text>
           </TouchableOpacity>
         </View>
