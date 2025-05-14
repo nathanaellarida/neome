@@ -16,10 +16,11 @@ export default function Layout() {
     //router.replace('/loginpage/register');
     //router.replace('/Challenges/CreateNewChallenge');
     //router.replace('/components/EmailVerificationModal');
-    router.replace('/homescreen/HomeScreen');
+    //router.replace('/homescreen/HomeScreen');
   //router.replace('/homescreen/waterIntake');
    // router.replace('/neome_userdata_app/wellnessgoals');
     //router.replace('/neome_userdata_app/activitylevel');
+     router.replace('/loginpage/login');
   }, []);
 
   return (

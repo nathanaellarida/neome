@@ -10,12 +10,12 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
+import { signInWithEmailAndPassword, onAuthStateChanged, AuthError } from "firebase/auth";
 import { auth, db } from "../../firebaseConfig";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import Toast from "react-native-toast-message";
 
 // ✅ Image Paths
 const BACKGROUND_IMG = require("../assets/images/upper_page_design.png");
@@ -34,6 +34,7 @@ export default function Login() {
 
   const [form, setForm] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   // 🔹 Check if the user is already logged in
   useEffect(() => {
@@ -52,11 +53,20 @@ export default function Login() {
 
   // 🔹 Login Function
   const handleLoginPress = async () => {
+    // Validate input fields
     if (!form.email || !form.password) {
-      Alert.alert("Error", "Please enter both email and password.");
+      Toast.show({
+        type: 'error',
+        text1: 'Missing Information',
+        text2: 'Please enter both email and password',
+        position: 'bottom',
+        visibilityTime: 4000,
+      });
       return;
     }
 
+    setIsLoading(true); // Start loading indicator
+    
     try {
       await signInWithEmailAndPassword(auth, form.email, form.password);
       
@@ -69,10 +79,53 @@ export default function Login() {
         });
       }
       
+      // Show success toast before navigating
+      Toast.show({
+        type: 'success',
+        text1: 'Login Successful',
+        text2: 'Welcome back!',
+        position: 'bottom',
+        visibilityTime: 2000,
+      });
+      
       router.push("/homescreen/HomeScreen");
     } catch (error) {
-      const errorMessage = (error as any)?.message || "An unknown error occurred.";
-      Alert.alert("Login Failed", errorMessage);
+      setIsLoading(false); // Hide loading indicator on error
+      // Handle specific Firebase auth errors with helpful messages
+      const errorCode = (error as AuthError)?.code;
+      let errorMessage = "An unknown error occurred. Please try again.";
+      
+      switch (errorCode) {
+        case 'auth/invalid-email':
+          errorMessage = 'The email address is not valid.';
+          break;
+        case 'auth/user-disabled':
+          errorMessage = 'This account has been disabled.';
+          break;
+        case 'auth/user-not-found':
+          errorMessage = 'No account found with this email.';
+          break;
+        case 'auth/wrong-password':
+          errorMessage = 'Incorrect password. Please try again.';
+          break;
+        case 'auth/invalid-credential':
+          errorMessage = 'Invalid email or password.';
+          break;
+        case 'auth/too-many-requests':
+          errorMessage = 'Too many unsuccessful login attempts. Please try again later.';
+          break;
+        case 'auth/network-request-failed':
+          errorMessage = 'Network error. Please check your connection.';
+          break;
+      }
+      
+      Toast.show({
+        type: 'error',
+        text1: 'Login Failed',
+        text2: errorMessage,
+        position: 'bottom',
+        visibilityTime: 4000,
+      });
     }
   };
 
@@ -80,6 +133,9 @@ export default function Login() {
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         <View style={styles.container}>
+          {/* Toast Message Component */}
+          <Toast />
+          
           {/* Background Image */}
           <Image source={BACKGROUND_IMG} style={styles.topBackground} resizeMode="cover" />
 
@@ -134,8 +190,14 @@ export default function Login() {
             </View>
 
             {/* Login Button */}
-            <TouchableOpacity style={styles.loginButton} onPress={handleLoginPress}>
-              <Text style={styles.loginButtonText}>Login</Text>
+            <TouchableOpacity 
+              style={[styles.loginButton, isLoading && styles.disabledButton]} 
+              onPress={handleLoginPress} 
+              disabled={isLoading}
+            >
+              <Text style={styles.loginButtonText}>
+                {isLoading ? "Logging in..." : "Login"}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -253,6 +315,10 @@ const styles = StyleSheet.create({
     color: '#6549FE',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  disabledButton: {
+    opacity: 0.7,
+    borderColor: '#9784FF',
   },
   signUpContainer: {
     flexDirection: 'row',
