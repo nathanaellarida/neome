@@ -39,7 +39,7 @@ export interface AnalysisResult {
   segment_count?: number;
 }
 
-const DEFAULT_IP = '192.168.1.6';
+const DEFAULT_IP = '192.168.1.8';
 const API_URL = `http://${DEFAULT_IP}:5000/analyze-journal`;
 const GEMINI_API_KEY = 'YOUR_GEMINI_API_KEY';
 const MODEL_NAME = 'gemini-2.0-flash';
