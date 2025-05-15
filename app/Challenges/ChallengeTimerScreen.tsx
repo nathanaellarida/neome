@@ -427,9 +427,8 @@ const ChallengeTimerScreen: React.FC = () => {
             <TouchableOpacity
               style={styles.modalPrimaryBtn}
               onPress={() => {
-                setShowStopSuccessModal(false);
-                router.push({
-                  pathname: '/Challenges/SuccessPoints',
+                setShowStopSuccessModal(false);                router.push({
+                  pathname: './SuccessPoints',
                   params: { points: calculateChallengePoints(originalTime / 60, (originalTime - timeLeft) / 60).toString() }
                 });
               }}
@@ -441,7 +440,7 @@ const ChallengeTimerScreen: React.FC = () => {
               style={styles.modalSecondaryBtn}
               onPress={() => {
                 setShowStopSuccessModal(false);
-                router.push('/Challenges/ChallengeDashboard');
+                router.push('./ChallengeDashboard');
               }}
             >
               <Text style={styles.secondaryText}>Back</Text>

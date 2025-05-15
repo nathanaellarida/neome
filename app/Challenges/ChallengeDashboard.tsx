@@ -13,7 +13,6 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { ImageSourcePropType } from 'react-native';
 import { db, auth, storage } from '../../firebaseConfig';
 import { collection, query, getDocs, DocumentData, doc, getDoc, deleteDoc } from 'firebase/firestore';
 import { ref, getDownloadURL } from 'firebase/storage';
@@ -374,7 +373,9 @@ export default function HomeScreen() {
           <Image source={require('../assets/images/challenges/trophy.png')} style={styles.trophyImage} />
         </ImageBackground>
 
-        <Text style={styles.progressTitle}>My Progress</Text>        {/* Loading State */}
+        <Text style={styles.progressTitle}>My Progress</Text>
+        
+        {/* Loading State */}
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#6549FE" />
@@ -396,30 +397,31 @@ export default function HomeScreen() {
 
       {/* Bottom Navigation Bar */}
       <View style={styles.bottomNav}>
-            <TouchableOpacity style={styles.navButton}>
-            <Ionicons name="home-outline" size={25} color="#6549FE" />
-            </TouchableOpacity>
-    
-            {/* Increased spacing for Statistics */}
-            <TouchableOpacity style={[styles.navButton, { marginRight: 30 }]}>
-            <Ionicons name="bar-chart-outline" size={25} color="#6549FE" />
-            </TouchableOpacity>
-    
-            {/* Center Profile Button */}
-            <TouchableOpacity style={styles.centerCircle}>
-            <Ionicons name="person" size={32} color="#FFFFFF" />
-            </TouchableOpacity>
-    
-            {/* Increased spacing for Calendar */}
-            <TouchableOpacity style={[styles.navButton, { marginLeft: 30 }]}>
-            <Ionicons name="calendar-outline" size={25} color="#6549FE" />
-            </TouchableOpacity>
-    
-            <TouchableOpacity style={styles.navButton}>
-            <Ionicons name="chatbubble-ellipses-outline" size={25} color="#6549FE" />
-            </TouchableOpacity>
-        </View>
-        {/* My Progress Modal */}
+        <TouchableOpacity style={styles.navButton}>
+          <Ionicons name="home-outline" size={25} color="#6549FE" />
+        </TouchableOpacity>
+
+        {/* Increased spacing for Statistics */}
+        <TouchableOpacity style={[styles.navButton, { marginRight: 30 }]}>
+          <Ionicons name="bar-chart-outline" size={25} color="#6549FE" />
+        </TouchableOpacity>
+
+        {/* Center Profile Button */}
+        <TouchableOpacity style={styles.centerCircle}>
+          <Ionicons name="person" size={32} color="#FFFFFF" />
+        </TouchableOpacity>
+
+        {/* Increased spacing for Calendar */}
+        <TouchableOpacity style={[styles.navButton, { marginLeft: 30 }]}>
+          <Ionicons name="calendar-outline" size={25} color="#6549FE" />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.navButton}>
+          <Ionicons name="chatbubble-ellipses-outline" size={25} color="#6549FE" />
+        </TouchableOpacity>
+      </View>
+      
+      {/* My Progress Modal */}
       <Modal visible={showProgressModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
@@ -483,7 +485,8 @@ const { width } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F3F6FF' },
-  scrollContainer: { paddingBottom: 100 },  loadingContainer: {
+  scrollContainer: { paddingBottom: 100 },
+  loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
@@ -806,5 +809,4 @@ const styles = StyleSheet.create({
   modalCloseBtn: {
     alignSelf: 'flex-end',
   },  
-  
 });

@@ -88,7 +88,7 @@ export default function SettingsScreen() {
             </TouchableOpacity>
 
             {/* Goals Button */}
-            <TouchableOpacity style={styles.settingButton} onPress={() => router.push('/mental_activities/MentalActivities')}>
+            <TouchableOpacity style={styles.settingButton} onPress={() => router.push('/settings/goals')}>
               <View style={styles.settingLeft}>
                 <MaterialIcons name="track-changes" size={24} color="#6549FE" />
                 <Text style={styles.settingText}>Goals</Text>
@@ -96,14 +96,7 @@ export default function SettingsScreen() {
               <Ionicons name="chevron-forward" size={20} color="#aaa" />
             </TouchableOpacity>
 
-            {/* Weekly Report Button */}
-            <TouchableOpacity style={styles.settingButton}>
-              <View style={styles.settingLeft}>
-                <MaterialIcons name="monitor-heart" size={24} color="#6549FE" />
-                <Text style={styles.settingText}>My Weekly Report</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#aaa" />
-            </TouchableOpacity>
+
 
             {/* Change Password Button */}
             <TouchableOpacity style={styles.settingButton} onPress={() => router.push('/settings/changePassword')}>

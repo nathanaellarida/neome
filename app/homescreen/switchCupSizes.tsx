@@ -55,7 +55,7 @@ export default function SwitchCupSizes() {
                     style={styles.gridItem}
                     onPress={() => {
                       setCup(item);
-                      router.push('/homescreen/waterIntake');
+                      router.push('./waterIntake');
                     }}
                   >
                     <View style={[styles.gridIcon, { borderColor: '#E0E0E0' }]}> 

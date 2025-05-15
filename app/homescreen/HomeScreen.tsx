@@ -369,8 +369,8 @@ export default function HomeScreen() {
               { value: userPoints, label: 'Points', image: require('../assets/images/points.png') },
               { value: todayCalories.toString(), label: 'Calories', image: require('../assets/images/poultryLeg.png') },
               { value: waterIntake.toString(), label: 'Water Intake', image: require('../assets/images/droplet.png') },
-              { value: '25', label: 'Badges', image: require('../assets/images/badges.png') },
-              { value: '2,532', label: 'Steps', image: require('../assets/images/steps.png') },
+              { value: '0', label: 'Badges', image: require('../assets/images/badges.png') },
+              { value: '0', label: 'Steps', image: require('../assets/images/steps.png') },
             ].map((item, index) => (
               <View key={index} style={styles.statBox}>
                 <Image
@@ -649,11 +649,10 @@ export default function HomeScreen() {
             <Text style={styles.trackFoodMain}>Track Food</Text>
             <Text style={styles.trackFoodGoal}>Goal: 2,000 Calories Today!</Text>
             <TouchableOpacity
-              style={styles.trackFoodButton}
-              onPress={async () => {
+              style={styles.trackFoodButton}              onPress={async () => {
                 await playTapSound();
                 // TODO: Replace with your food tracking screen route
-                router.push('/homescreen/foodTracking');
+                router.push('./foodTracking');
               }}
             >
               <Text style={styles.trackFoodButtonText}>Log Meal</Text>
@@ -669,10 +668,9 @@ export default function HomeScreen() {
             <Text style={styles.drinkWaterMain}>Drink a Water</Text>
             <Text style={styles.drinkWaterGoal}>Goal: 3 Liters Today! Tap to Track</Text>
             <TouchableOpacity
-              style={styles.drinkWaterButton}
-              onPress={async () => {
+              style={styles.drinkWaterButton}              onPress={async () => {
                 await playTapSound();
-                router.push('/homescreen/waterIntake');
+                router.push('./waterIntake');
               }}
             >
               <Text style={styles.drinkWaterButtonText}>Drink</Text>
@@ -688,10 +686,9 @@ export default function HomeScreen() {
             <Text style={styles.stepsCounterMain}>Steps Counter</Text>
             <Text style={styles.stepsCounterGoal}>Goal: 10,000 Steps Today!</Text>
             <TouchableOpacity
-              style={styles.stepsCounterButton}
-              onPress={async () => {
+              style={styles.stepsCounterButton}              onPress={async () => {
                 await playTapSound();
-                router.push('/homescreen/stepsCounterHome');
+                router.push('./stepsCounterHome');
               }}
             >
               <Text style={styles.stepsCounterButtonText}>Track Steps</Text>
@@ -705,14 +702,13 @@ export default function HomeScreen() {
           <Text style={styles.challengeTitle}>Challenge Yourself</Text>
           <Text style={styles.challengeMainText}>Let's Play{'\n'}Together</Text>
 
-          {/* Buttons */}
+         {/* Buttons */}
           <View style={styles.challengeButtonContainer}>
-            <TouchableOpacity style={styles.challengeButton}>
+            <TouchableOpacity 
+              style={styles.challengeButton} 
+              onPress={() => router.push('../Challenges/ChallengeDashboard')}
+            >
               <Text style={styles.challengeButtonText}>With friends</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.challengeButton}>
-              <Text style={styles.challengeButtonText}>With others</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1332,6 +1328,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
     marginTop: 10,
+    marginLeft: -160,
   },
   
   challengeButton: {
@@ -1354,9 +1351,9 @@ const styles = StyleSheet.create({
   viewButtonContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start', // Align button to the left
-    marginTop: 10, // Add space from text
+    marginTop: -30, // Add space from text
     width: '100%', // Ensure it takes full width for proper alignment
-    marginLeft: 20,
+    marginLeft: 50,
   },
 
   viewButton: {

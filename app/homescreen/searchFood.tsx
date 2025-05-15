@@ -49,7 +49,7 @@ export default function SearchFood() {
     <View style={styles.container}>
       {/* Header with dropdown */}
       <View style={styles.headerRow}>
-        <TouchableOpacity onPress={() => router.push('/homescreen/foodTracking')}>
+        <TouchableOpacity onPress={() => router.push('./foodTracking')}>
           <Ionicons name="close" size={24} color="#222" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.mealDropdown}>
@@ -95,7 +95,7 @@ export default function SearchFood() {
             style={styles.foodCard} 
             activeOpacity={0.8} 
             onPress={() => router.push({
-              pathname: '/homescreen/addFood',
+              pathname: './addFood',
               params: { 
                 foodName: item.name,
                 calories: item.cal,

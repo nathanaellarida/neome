@@ -120,7 +120,7 @@ export default function AddFood() {
         collection(db, 'users', user.uid, 'foodLogs'),
         foodLog
       );
-      router.push({ pathname: '/homescreen/searchFood', params: { foodLogged: 'true' } });
+      router.push({ pathname: './searchFood', params: { foodLogged: 'true' } });
     } catch (err) {
       console.error('Failed to save food log:', err);
       // Optionally show an error toast here

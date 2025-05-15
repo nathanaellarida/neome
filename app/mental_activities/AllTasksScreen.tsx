@@ -37,7 +37,7 @@ export default function AllTasksScreen() {
           <TouchableOpacity
             onPress={() =>
               router.push({
-                pathname: '/mental_activities/AddNewTask',
+                pathname: './AddNewTask',
               })
             }
           >
@@ -71,7 +71,7 @@ export default function AllTasksScreen() {
                 style={styles.editButton}
                 onPress={() =>
                   router.push({
-                    pathname: '/mental_activities/EditTask',
+                    pathname: './EditTask',
                     params: {
                       title: task.title,
                       description: task.description,

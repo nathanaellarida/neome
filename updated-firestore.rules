@@ -36,24 +36,29 @@ service cloud.firestore {
         allow read, write: if true;
       }
       
-      // Permissions for waterIntakeHistory subcollection
+      // Permissions for water intake history
       match /waterIntakeHistory/{entryId} {
         allow read, write: if true;
       }
       
-      match /folders/{folderId} {
-        allow read, write: if true;
-        match /journals/{journalId} {
-          allow read, write: if true;
-        }
-      }
-      match /journals/{journalId} {
+      // Permissions for folders and journals
+      match /Folders/{folderId} {
         allow read, write: if true;
       }
+      
+      match /Journals/{journalId} {
+        allow read, write: if true;
+      }
+      
       match /history/{historyId} {
         allow read, write: if true;
       }
+      
       match /tasks/{taskId} {
+        allow read, write: if true;
+      }
+      
+      match /foodLogs/{logId} {
         allow read, write: if true;
       }
     }
@@ -76,15 +81,17 @@ service cloud.firestore {
       allow read, write: if true;
     }
     
+    // Public data access
     match /publicData/{docId} {
       allow read, write: if true;
     }
     
-    // FOR PRODUCTION
+    // Workout data access
     match /workouts/{workoutId} {
       allow read, write: if true;
     }
     
+    // Challenge icons access
     match /challenges_icons/{iconId} {
       allow read, write: if true;
     }
@@ -93,5 +100,10 @@ service cloud.firestore {
     match /shared_challenges/{challengeId} {
       allow read, write: if true;
     }
+
+    // General challenges collection
+    match /challenges/{challengeId} {
+      allow read, write: if true;
+    }
   }
-} 
+}

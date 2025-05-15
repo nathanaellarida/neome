@@ -39,6 +39,51 @@ export default function AvatarProgressScreen() {
   const [avatarModel, setAvatarModel] = useState('femaleBody6.glb'); // Default
   const [goalAvatarModel, setGoalAvatarModel] = useState('femaleBody5.glb'); // Default goal body
   
+  // Function to generate WebView HTML content with proper scaling
+  const generateAvatarHTML = (model: string) => {
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+          <script type="module" src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.module.js"></script>
+          <script type="module" src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/jsm/loaders/GLTFLoader.js"></script>
+          <style>
+            html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: transparent; }
+            model-viewer { 
+              width: 100%; 
+              height: 100%;
+              --poster-color: transparent;
+              --progress-bar-color: transparent;
+              --progress-mask: transparent;
+            }
+            .text-content { display: none; } /* Hide any text content */
+          </style>
+        </head>
+        <body>
+          <model-viewer 
+            id="avatar"
+            src="https://raw.githubusercontent.com/VIRGINIAMW123/female-avatar-models/main/${model}"
+            alt="3D Avatar"
+            camera-controls
+            autoplay
+            environment-image="neutral"
+            shadow-intensity="1"
+            exposure="1"
+            camera-orbit="0deg 85deg 2.0m"
+            min-camera-orbit="auto auto 1.5m"
+            max-camera-orbit="auto auto 3.0m"
+            field-of-view="28deg"
+            disable-zoom
+            interaction-prompt="none">
+          </model-viewer>
+        </body>
+      </html>
+    `;
+  };
+  
   // Fetch user data and calculate BMI for avatar model
   useEffect(() => {
     const fetchUserData = async () => {
@@ -60,7 +105,7 @@ export default function AvatarProgressScreen() {
 
     fetchUserData();
   }, []);
-
+  
   // Calculate BMI and set avatar models for both current and goal views
   useEffect(() => {
     if (!height || !weight) return;
@@ -106,41 +151,6 @@ export default function AvatarProgressScreen() {
     setGoalAvatarModel(goalAvatar);
   }, [height, weight]);
 
-  // Construct WebView HTML as a string to avoid text node issues
-  const createAvatarWebViewHTML = (modelName: string): string => {
-    return `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1">
-          <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
-          <script type="module" src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.module.js"></script>
-          <script type="module" src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/jsm/loaders/GLTFLoader.js"></script>
-          <style>
-            html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: transparent; }
-            model-viewer { width: 100%; height: 100%; }
-            .text-content { display: none; } /* Hide any text content */
-          </style>
-        </head>
-        <body>
-          <model-viewer 
-            id="avatar"
-            src="https://raw.githubusercontent.com/VIRGINIAMW123/female-avatar-models/main/${modelName}"
-            alt="3D Avatar"
-            camera-controls
-            autoplay
-            environment-image="neutral"
-            shadow-intensity="1"
-            exposure="1"
-            camera-orbit="0deg 85deg 1.5m"
-            field-of-view="30deg">
-          </model-viewer>
-        </body>
-      </html>
-    `;
-  };
-
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -180,9 +190,7 @@ export default function AvatarProgressScreen() {
               domStorageEnabled
               allowsFullscreenVideo
               mediaPlaybackRequiresUserAction={false}
-              source={{
-                html: createAvatarWebViewHTML(avatarModel)
-              }}
+              source={{ html: generateAvatarHTML(avatarModel) }}
               style={styles.avatarWebView}
             />
             <View
@@ -205,9 +213,7 @@ export default function AvatarProgressScreen() {
               domStorageEnabled
               allowsFullscreenVideo
               mediaPlaybackRequiresUserAction={false}
-              source={{
-                html: createAvatarWebViewHTML(goalAvatarModel)
-              }}
+              source={{ html: generateAvatarHTML(goalAvatarModel) }}
               style={styles.avatarWebView}
             />
             <View
@@ -251,21 +257,21 @@ export default function AvatarProgressScreen() {
               >
                 {/* Progress Circle with % inside */}
                 <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
-                <Svg width={size} height={size} style={{ position: 'absolute' }}>
-                  {/* Only white progress stroke */}
-                  <Circle
-                    stroke="#FFFFFF"
-                    cx={size / 2}
-                    cy={size / 2}
-                    r={radius}
-                    strokeWidth={strokeWidth}
-                    strokeDasharray={circumference}
-                    strokeDashoffset={circumference - progress}
-                    strokeLinecap="round"
-                    rotation="-90"
-                    origin={`${size / 2}, ${size / 2}`}
-                  />
-                </Svg>
+                  <Svg width={size} height={size} style={{ position: 'absolute' }}>
+                    {/* Only white progress stroke */}
+                    <Circle
+                      stroke="#FFFFFF"
+                      cx={size / 2}
+                      cy={size / 2}
+                      r={radius}
+                      strokeWidth={strokeWidth}
+                      strokeDasharray={circumference}
+                      strokeDashoffset={circumference - progress}
+                      strokeLinecap="round"
+                      rotation="-90"
+                      origin={`${size / 2}, ${size / 2}`}
+                    />
+                  </Svg>
 
                   {/* Center fill + text */}
                   <View style={{
@@ -496,7 +502,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  
+
   // CENTER PROFILE BUTTON
   centerCircle: {
     width: 65,
@@ -513,7 +519,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.5,
     shadowRadius: 3,
     elevation: 6,
-  },
+  },    
   avatarComparison: {
     flexDirection: 'row',
     backgroundColor: '#fff',
@@ -523,13 +529,12 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     elevation: 2,
     height: 380, // ← increased height for 3D models
-    marginLeft: 0,
   },
   avatarColumn: {
     alignItems: 'center',
     justifyContent: 'center',
     flex: 1,
-  },
+  },    
   avatarLabel: {
     fontWeight: 'bold',
     fontSize: 14,
@@ -551,13 +556,13 @@ const styles = StyleSheet.create({
   mintShadow: {
     backgroundColor: '#C7FFE3',
     opacity: 1,
-  },
+  },    
   divider: {
     width: 1,
     backgroundColor: '#DADADA',
     height: '100%',
     alignSelf: 'center',
-  },
+  },    
   avatarWebView: {
     width: 140,
     height: 280,
